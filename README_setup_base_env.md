@@ -67,6 +67,16 @@ cd ~/your-project-directory
 - **13 R Packages**: tidyverse, bibliometrix, reticulate, and more
 - **Julia Environment**: IJulia kernel with automatic setup
 
+### 🛡️ Production-Grade Safety Features
+- **Pre-flight Checks**: Validates disk space (10GB minimum), internet connectivity, write permissions, and system dependencies before installation
+- **Operating System Detection**: Automatically detects macOS/Linux and adjusts commands accordingly
+- **Cross-Platform Compatibility**: Full support for macOS and Linux (Ubuntu, RHEL, Fedora, etc.)
+- **Environment Snapshots**: Automatic backup of working environment before making changes
+- **Automatic Rollback**: Restores previous state if installation fails
+- **Post-installation Health Checks**: Validates Python interpreter, critical packages (numpy, pandas, matplotlib, jupyter), and Jupyter kernels
+- **Installation Metadata**: Tracks installation history, timestamps, package counts, conflict status, and OS information in `.env_metadata.json`
+- **Snapshot Management**: Automatically cleans up old snapshots (keeps 2 most recent) and removes snapshot after successful installation
+
 ### 🔑 API Key Management
 Automatically configures environment variables for:
 - OpenAI API
@@ -373,6 +383,118 @@ jupyter kernelspec list
 # Test R integration
 python -c "from rpy2.robjects import r; print('✅ R integration works')"
 ```
+
+## Production-Grade Safety Features
+
+The setup script includes multiple layers of protection to ensure reliable, fail-safe installations:
+
+### 🛡️ Pre-flight Checks
+
+Before making any changes, the script validates:
+
+1. **Operating System Detection**: Detects macOS or Linux, identifies architecture (x86_64, arm64, etc.)
+2. **Platform Compatibility**: Ensures OS is supported (macOS, Linux); warns if running on Windows
+3. **Disk Space**: Ensures at least 10GB of free space is available (cross-platform df command handling)
+4. **Internet Connectivity**: Tests connection to PyPI and Google DNS
+5. **Write Permissions**: Verifies script can write to the environment directory
+6. **System Dependencies**: Checks for git, curl, and platform-specific package managers
+7. **Build Tools**: On Linux, checks for gcc and make (needed for compiling Python packages)
+8. **Metadata Loading**: Reads existing installation history if available
+
+If any critical check fails, the script exits immediately before making changes.
+
+**Cross-Platform Support:**
+- **macOS**: Uses Homebrew for system packages, df -g for disk space
+- **Linux**: Supports apt (Ubuntu/Debian), yum (RHEL/CentOS), dnf (Fedora), uses df -BG for disk space
+- **Shell Detection**: Auto-detects zsh, bash, or sh and configures appropriately
+- **Platform-Specific Commands**: Automatically adjusts sed syntax and other commands based on OS
+
+### 📸 Environment Snapshots
+
+**Automatic Backup Creation:**
+- Before making any changes, the script creates a complete backup of your current `.venv` directory
+- Snapshots are stored as `.venv.snapshot_YYYYMMDD_HHMMSS/`
+- Each snapshot includes metadata:
+  - Timestamp of snapshot creation
+  - Python and pip versions
+  - Package count
+  - Copy of `requirements.txt` and `requirements.lock.txt`
+
+**Automatic Cleanup:**
+- Keeps only the 2 most recent snapshots to save disk space
+- Removes snapshot after successful installation (no longer needed)
+- Older snapshots are automatically pruned
+
+### 🔄 Automatic Rollback
+
+**Error Detection:**
+- Error trapping is enabled during the installation phase (`set -e` and `trap`)
+- Any command failure triggers automatic rollback
+- Failures during pip-compile, wheel building, or package installation are caught
+
+**Rollback Process:**
+- Removes the failed `.venv` directory
+- Restores the most recent snapshot
+- Shows metadata about the restored environment
+- Exits with clear error message
+
+**Manual Rollback:**
+If you need to manually restore a snapshot:
+```bash
+cd base-env
+rm -rf .venv
+mv .venv.snapshot_YYYYMMDD_HHMMSS .venv
+source .venv/bin/activate
+```
+
+### 🏥 Post-Installation Health Checks
+
+After successful package installation, the script validates:
+
+1. **Python Interpreter**: Verifies Python can run and display version
+2. **Critical Packages**: Tests imports of numpy, pandas, matplotlib, jupyter, ipykernel
+3. **Jupyter Kernel**: Checks if Python3 kernel is available
+4. **Environment Size**: Reports disk space used by environment
+
+If critical checks fail, you're prompted to rollback or continue at your own risk.
+
+### 📝 Installation Metadata
+
+The script maintains a `.env_metadata.json` file that tracks:
+
+```json
+{
+  "last_successful_install": "2025-10-25 14:30:00",
+  "os_platform": "macos",
+  "os_type": "Darwin",
+  "os_arch": "arm64",
+  "python_version": "3.12.7",
+  "pip_version": "24.3.1",
+  "packages_count": 450,
+  "has_conflicts": false,
+  "installation_mode": "adaptive"
+}
+```
+
+**Use Cases:**
+- Track when environment was last successfully updated
+- Identify which mode was used for installation
+- Monitor package count growth over time
+- Quick conflict status check
+
+**Location:** `base-env/.env_metadata.json` (excluded from git via `.gitignore`)
+
+### 🧹 Excluded from Git
+
+The following safety-related files are automatically excluded from version control:
+
+```
+.venv.snapshot_*/          # Snapshot backups
+.env_metadata.json         # Installation metadata
+*.log                      # Log files
+```
+
+This prevents bloating the repository while maintaining local safety features.
 
 ## Package Management Strategy
 

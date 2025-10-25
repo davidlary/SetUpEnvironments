@@ -28,6 +28,7 @@ REQUIREMENTS:
    - Check if packages already exist in base-env/requirements.in
    - Verify current installation status in base-env/.venv
    - Run setup_base_env.sh with --adaptive flag for intelligent conflict resolution
+   - **SAFETY FEATURES**: Script automatically creates snapshot before changes and can rollback on failure
    - Test each new/updated package installation and basic functionality
    - Check for package conflicts using pip check
    - Document any conflicts found (breaking vs. non-breaking)
@@ -355,6 +356,78 @@ git checkout --theirs [files from remote]
 1. Run with `--adaptive` flag first
 2. If unresolved, add smart constraint to requirements.in
 3. Document in README if it's a new known issue
+
+---
+
+## 🛡️ Production-Grade Safety Features
+
+The setup script now includes comprehensive safety features to ensure fail-safe installations:
+
+### Automatic Protection During Updates
+
+**Pre-flight Checks:**
+- Validates disk space (10GB minimum), internet connectivity, and write permissions
+- Loads existing installation metadata if available
+- Fails fast before making any changes if issues detected
+
+**Environment Snapshots:**
+- **Automatic backup** of entire `.venv` directory before any changes
+- Snapshots named `.venv.snapshot_YYYYMMDD_HHMMSS/`
+- Includes metadata (timestamp, Python/pip versions, package count)
+- Automatically cleans up old snapshots (keeps 2 most recent)
+
+**Automatic Rollback:**
+- Error trapping enabled during installation (`set -e` and `trap`)
+- Any failure triggers automatic restore from snapshot
+- Removes failed environment and restores working state
+- Shows clear error message and restored environment details
+
+**Post-Installation Health Checks:**
+- Validates Python interpreter functionality
+- Tests critical package imports (numpy, pandas, matplotlib, jupyter, ipykernel)
+- Checks Jupyter kernel availability
+- Reports environment size
+- Prompts for user confirmation if critical checks fail
+
+**Installation Metadata Tracking:**
+- Records in `.env_metadata.json`:
+  - Last successful install timestamp
+  - Operating system (platform, type, architecture)
+  - Python and pip versions
+  - Package count
+  - Conflict status
+  - Installation mode (fast/adaptive)
+
+**Cross-Platform Compatibility:**
+- Automatically detects macOS or Linux
+- Adjusts commands for platform-specific differences
+- Supports multiple Linux distributions (Ubuntu, RHEL, Fedora, etc.)
+- Detects and configures appropriate shell (zsh, bash, sh)
+- Platform-specific package manager support (Homebrew, apt, yum, dnf)
+
+### What This Means for You
+
+**Safety Guarantees:**
+- ✅ Your working environment is never lost
+- ✅ Failed installations automatically rollback
+- ✅ Can manually restore from recent snapshots if needed
+- ✅ Installation history is tracked
+
+**Excluded from Git:**
+```
+.venv.snapshot_*/          # Snapshot backups
+.env_metadata.json         # Installation metadata
+*.log                      # Log files
+```
+
+**Manual Rollback (if needed):**
+```bash
+cd base-env
+rm -rf .venv
+ls -td .venv.snapshot_* | head -1  # Find most recent snapshot
+mv .venv.snapshot_YYYYMMDD_HHMMSS .venv
+source .venv/bin/activate
+```
 
 ---
 

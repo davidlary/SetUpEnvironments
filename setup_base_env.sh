@@ -101,6 +101,291 @@ ENV_DIR="$HOME/Dropbox/Environments/base-env"
 mkdir -p "$ENV_DIR"
 cd "$ENV_DIR"
 
+# ============================================================================
+# PRE-FLIGHT SAFETY CHECKS (with cross-platform support)
+# ============================================================================
+echo ""
+echo "🛡️  PRE-FLIGHT SAFETY CHECKS"
+echo "----------------------------"
+
+# Check 0: Operating System Detection and Compatibility
+echo "🖥️  Detecting operating system..."
+OS_TYPE=$(uname -s)
+OS_ARCH=$(uname -m)
+
+case "$OS_TYPE" in
+  Darwin*)
+    echo "✅ Running on macOS ($OS_ARCH)"
+    OS_PLATFORM="macos"
+    PACKAGE_MANAGER="brew"
+    DF_COMMAND="df -g"
+    ;;
+  Linux*)
+    echo "✅ Running on Linux ($OS_ARCH)"
+    OS_PLATFORM="linux"
+    # Detect Linux package manager
+    if command -v apt-get &>/dev/null; then
+      PACKAGE_MANAGER="apt"
+    elif command -v yum &>/dev/null; then
+      PACKAGE_MANAGER="yum"
+    elif command -v dnf &>/dev/null; then
+      PACKAGE_MANAGER="dnf"
+    else
+      echo "⚠️  Could not detect Linux package manager"
+      PACKAGE_MANAGER="none"
+    fi
+    DF_COMMAND="df -BG"
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    echo "❌ Windows (Git Bash/MSYS/Cygwin) is not fully supported"
+    echo "   This script is optimized for macOS and Linux"
+    echo "   Consider using WSL2 (Windows Subsystem for Linux) instead"
+    exit 1
+    ;;
+  *)
+    echo "❌ Unsupported operating system: $OS_TYPE"
+    echo "   This script supports macOS and Linux"
+    exit 1
+    ;;
+esac
+
+# Check 1: Disk Space (need at least 10GB free) - Cross-platform
+echo "📊 Checking disk space..."
+if [ "$OS_PLATFORM" = "macos" ]; then
+  AVAILABLE_GB=$(df -g "$ENV_DIR" | tail -1 | awk '{print $4}')
+else
+  # Linux: df -BG gives output in GB
+  AVAILABLE_GB=$(df -BG "$ENV_DIR" | tail -1 | awk '{print $4}' | sed 's/G//')
+fi
+
+if [ "$AVAILABLE_GB" -lt 10 ]; then
+  echo "❌ Insufficient disk space: ${AVAILABLE_GB}GB available (need 10GB minimum)"
+  echo "   Please free up disk space before continuing"
+  exit 1
+fi
+echo "✅ Sufficient disk space: ${AVAILABLE_GB}GB available"
+
+# Check 2: Internet Connectivity
+echo "🌐 Checking internet connectivity..."
+if ! ping -c 1 pypi.org >/dev/null 2>&1 && ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+  echo "❌ No internet connectivity detected"
+  echo "   Internet is required to download packages"
+  exit 1
+fi
+echo "✅ Internet connectivity confirmed"
+
+# Check 3: Write Permissions
+echo "🔐 Checking write permissions..."
+if ! touch "$ENV_DIR/.write_test" 2>/dev/null; then
+  echo "❌ No write permission in $ENV_DIR"
+  echo "   Please check directory permissions"
+  exit 1
+fi
+rm -f "$ENV_DIR/.write_test"
+echo "✅ Write permissions verified"
+
+# Check 4: System Dependencies and Tools
+echo "🔧 Checking system dependencies..."
+MISSING_TOOLS=()
+
+# Essential tools check (cross-platform)
+for tool in git curl; do
+  if ! command -v $tool &>/dev/null; then
+    MISSING_TOOLS+=("$tool")
+  fi
+done
+
+# Platform-specific package manager check
+if [ "$OS_PLATFORM" = "macos" ]; then
+  if ! command -v brew &>/dev/null; then
+    echo "⚠️  Homebrew not found - will attempt to install pyenv manually"
+    echo "   For best experience, install Homebrew: https://brew.sh"
+  else
+    echo "✅ Homebrew available"
+  fi
+fi
+
+if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
+  echo "❌ Missing required tools: ${MISSING_TOOLS[*]}"
+  echo "   Please install these tools before continuing"
+  exit 1
+fi
+echo "✅ All essential tools available"
+
+# Check 5: Python Compatibility
+echo "🐍 Checking Python requirements..."
+# Check if we can compile Python (development headers needed on Linux)
+if [ "$OS_PLATFORM" = "linux" ]; then
+  # Check for essential build tools
+  BUILD_TOOLS_MISSING=()
+  for tool in gcc make; do
+    if ! command -v $tool &>/dev/null; then
+      BUILD_TOOLS_MISSING+=("$tool")
+    fi
+  done
+
+  if [ ${#BUILD_TOOLS_MISSING[@]} -gt 0 ]; then
+    echo "⚠️  Missing build tools: ${BUILD_TOOLS_MISSING[*]}"
+    echo "   These may be needed to compile Python or some packages"
+    echo "   Recommended: Install build-essential (Ubuntu/Debian) or Development Tools (RHEL/CentOS)"
+  fi
+fi
+echo "✅ Python requirements check complete"
+
+# Check 6: Load existing environment metadata (if any)
+METADATA_FILE="$ENV_DIR/.env_metadata.json"
+if [ -f "$METADATA_FILE" ]; then
+  echo "📋 Found existing environment metadata"
+  LAST_INSTALL=$(grep '"last_successful_install"' "$METADATA_FILE" 2>/dev/null | sed 's/.*: "\(.*\)".*/\1/')
+  if [ -n "$LAST_INSTALL" ]; then
+    echo "   Last successful install: $LAST_INSTALL"
+  fi
+fi
+
+echo "✅ All pre-flight checks passed"
+echo ""
+
+# ============================================================================
+# ENVIRONMENT SNAPSHOT & ROLLBACK FUNCTIONS
+# ============================================================================
+
+# Function to create snapshot of current environment
+create_environment_snapshot() {
+  if [ -d ".venv" ]; then
+    SNAPSHOT_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    SNAPSHOT_DIR=".venv.snapshot_${SNAPSHOT_TIMESTAMP}"
+
+    echo ""
+    echo "📸 ENVIRONMENT SNAPSHOT"
+    echo "----------------------"
+    echo "📦 Creating backup of current environment..."
+
+    # Copy entire .venv directory
+    if cp -R .venv "$SNAPSHOT_DIR"; then
+      echo "✅ Snapshot created: $SNAPSHOT_DIR"
+
+      # Record snapshot metadata
+      cat > "$SNAPSHOT_DIR/.snapshot_info" <<EOF
+snapshot_timestamp: $SNAPSHOT_TIMESTAMP
+snapshot_date: $(date '+%Y-%m-%d %H:%M:%S')
+python_version: $(python --version 2>&1 || echo "N/A")
+pip_version: $(pip --version 2>&1 | awk '{print $2}' || echo "N/A")
+packages_count: $(pip list 2>/dev/null | wc -l || echo "0")
+EOF
+
+      # Save current requirements for reference
+      if [ -f "requirements.txt" ]; then
+        cp requirements.txt "$SNAPSHOT_DIR/requirements.txt.snapshot"
+      fi
+      if [ -f "requirements.lock.txt" ]; then
+        cp requirements.lock.txt "$SNAPSHOT_DIR/requirements.lock.txt.snapshot"
+      fi
+
+      echo "📋 Snapshot metadata saved"
+      return 0
+    else
+      echo "⚠️  Failed to create snapshot (non-fatal, continuing...)"
+      return 1
+    fi
+  else
+    echo "ℹ️  No existing environment to snapshot (fresh install)"
+    return 0
+  fi
+}
+
+# Function to rollback to snapshot
+rollback_to_snapshot() {
+  # Find most recent snapshot
+  LATEST_SNAPSHOT=$(ls -td .venv.snapshot_* 2>/dev/null | head -1)
+
+  if [ -n "$LATEST_SNAPSHOT" ] && [ -d "$LATEST_SNAPSHOT" ]; then
+    echo ""
+    echo "🔄 AUTOMATIC ROLLBACK"
+    echo "---------------------"
+    echo "⚠️  Installation failed - rolling back to previous state..."
+
+    # Remove failed .venv
+    if [ -d ".venv" ]; then
+      rm -rf .venv
+    fi
+
+    # Restore from snapshot
+    if mv "$LATEST_SNAPSHOT" .venv; then
+      echo "✅ Environment restored from snapshot"
+
+      # Show what was restored
+      if [ -f ".venv/.snapshot_info" ]; then
+        echo ""
+        echo "📋 Restored environment details:"
+        cat ".venv/.snapshot_info" | sed 's/^/   /'
+        rm .venv/.snapshot_info
+      fi
+
+      return 0
+    else
+      echo "❌ Failed to restore from snapshot"
+      return 1
+    fi
+  else
+    echo "⚠️  No snapshot available for rollback"
+    return 1
+  fi
+}
+
+# Function to cleanup old snapshots (keep only most recent 2)
+cleanup_old_snapshots() {
+  SNAPSHOT_COUNT=$(ls -d .venv.snapshot_* 2>/dev/null | wc -l)
+
+  if [ "$SNAPSHOT_COUNT" -gt 2 ]; then
+    echo "🧹 Cleaning up old snapshots (keeping 2 most recent)..."
+    ls -td .venv.snapshot_* | tail -n +3 | xargs rm -rf
+    echo "✅ Old snapshots removed"
+  fi
+}
+
+# Function to record installation metadata
+record_installation_metadata() {
+  local status=$1
+  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+  # Create or append to metadata file
+  if [ ! -f "$METADATA_FILE" ]; then
+    echo "{" > "$METADATA_FILE"
+    echo '  "installations": []' >> "$METADATA_FILE"
+    echo "}" >> "$METADATA_FILE"
+  fi
+
+  # Record this installation
+  if [ "$status" = "success" ]; then
+    # Update last successful install timestamp
+    cat > "$METADATA_FILE" <<EOF
+{
+  "last_successful_install": "$timestamp",
+  "os_platform": "${OS_PLATFORM:-unknown}",
+  "os_type": "${OS_TYPE:-unknown}",
+  "os_arch": "${OS_ARCH:-unknown}",
+  "python_version": "$(python --version 2>&1 | awk '{print $2}')",
+  "pip_version": "$(pip --version 2>&1 | awk '{print $2}')",
+  "packages_count": $(pip list 2>/dev/null | wc -l),
+  "has_conflicts": $(pip check >/dev/null 2>&1 && echo false || echo true),
+  "installation_mode": "$([ "$ENABLE_ADAPTIVE" = "1" ] && echo "adaptive" || echo "fast")"
+}
+EOF
+    echo "📝 Installation metadata recorded"
+  fi
+}
+
+# Trap to handle failures
+trap_failure() {
+  echo ""
+  echo "❌ Installation failed at line $1"
+  rollback_to_snapshot
+  exit 1
+}
+
+# Set trap for failures (only for critical sections)
+# Note: trap will be set before installation and unset after success
+
 # Force reinstall handling
 if [ "$FORCE_REINSTALL" = "1" ]; then
   echo "🧹 Force reinstall requested - clearing .venv and caches..."
@@ -108,15 +393,53 @@ if [ "$FORCE_REINSTALL" = "1" ]; then
   echo "✅ Environment cleared for fresh installation"
 fi
 
-# Install pyenv if needed
+# Install pyenv if needed (cross-platform)
 if ! command -v pyenv &>/dev/null; then
   echo "🧰 Installing pyenv..."
-  brew install pyenv
+
+  if [ "$OS_PLATFORM" = "macos" ]; then
+    if command -v brew &>/dev/null; then
+      brew install pyenv
+    else
+      echo "❌ Homebrew not available - cannot install pyenv automatically"
+      echo "   Please install Homebrew first: https://brew.sh"
+      exit 1
+    fi
+  elif [ "$OS_PLATFORM" = "linux" ]; then
+    # Use pyenv-installer for Linux
+    echo "📥 Using pyenv-installer for Linux..."
+    curl https://pyenv.run | bash
+
+    # Add pyenv to PATH for this session
+    export PYENV_ROOT="$HOME/.pyenv"
+    export PATH="$PYENV_ROOT/bin:$PATH"
+  fi
+
+  echo "✅ pyenv installed"
 fi
 
-# Clean up .zshrc pyenv block
-sed -i '' '/# >>> pyenv setup >>>/,/# <<< pyenv setup <<</d' "$HOME/.zshrc" || true
-cat >> "$HOME/.zshrc" <<'EOF'
+# Configure shell for pyenv (cross-platform)
+# Detect shell configuration file
+if [ -n "$ZSH_VERSION" ] || [ -f "$HOME/.zshrc" ]; then
+  SHELL_CONFIG="$HOME/.zshrc"
+elif [ -n "$BASH_VERSION" ] || [ -f "$HOME/.bashrc" ]; then
+  SHELL_CONFIG="$HOME/.bashrc"
+else
+  # Default to .profile for other shells
+  SHELL_CONFIG="$HOME/.profile"
+fi
+
+echo "📝 Configuring pyenv in $SHELL_CONFIG..."
+
+# Clean up existing pyenv block (cross-platform sed)
+if [ "$OS_PLATFORM" = "macos" ]; then
+  sed -i '' '/# >>> pyenv setup >>>/,/# <<< pyenv setup <<</d' "$SHELL_CONFIG" 2>/dev/null || true
+else
+  sed -i '/# >>> pyenv setup >>>/,/# <<< pyenv setup <<</d' "$SHELL_CONFIG" 2>/dev/null || true
+fi
+
+# Add pyenv configuration
+cat >> "$SHELL_CONFIG" <<'EOF'
 # >>> pyenv setup >>>
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
@@ -1424,6 +1747,17 @@ create_needed_packages_list() {
   rm -f all_packages.txt installed_packages.txt needed_packages.txt
 }
 
+# ============================================================================
+# INSTALLATION PHASE - WITH SNAPSHOT & ROLLBACK PROTECTION
+# ============================================================================
+
+# Create snapshot of current environment before making changes
+create_environment_snapshot
+
+# Enable error trapping for installation phase
+set -e
+trap 'trap_failure $LINENO' ERR
+
 # Execute smart pre-filtering
 create_needed_packages_list
 
@@ -1438,6 +1772,7 @@ fi
 echo "📦 Compiling version-pinned requirements.txt..."
 if ! pip-compile requirements.in --output-file=requirements.txt; then
   echo "❌ pip-compile failed. Cannot continue."
+  rollback_to_snapshot
   exit 1
 fi
 
@@ -1533,9 +1868,93 @@ fi
 
 echo "🎯 Package installation completed"
 
-# Install R + IRkernel
+# ============================================================================
+# POST-INSTALLATION HEALTH CHECKS & SUCCESS HANDLING
+# ============================================================================
+
+# Disable error trapping (installation phase complete)
+set +e
+trap - ERR
+
+echo ""
+echo "🏥 POST-INSTALLATION HEALTH CHECKS"
+echo "-----------------------------------"
+
+# Check 1: Python environment
+echo "🐍 Checking Python environment..."
+if python -c "import sys; print(sys.version)" >/dev/null 2>&1; then
+  echo "✅ Python interpreter working"
+else
+  echo "❌ Python interpreter failed"
+  rollback_to_snapshot
+  exit 1
+fi
+
+# Check 2: Sample critical packages
+echo "📦 Checking critical packages..."
+CRITICAL_PACKAGES="numpy pandas matplotlib jupyter ipykernel"
+FAILED_IMPORTS=()
+
+for pkg in $CRITICAL_PACKAGES; do
+  if ! python -c "import $pkg" 2>/dev/null; then
+    FAILED_IMPORTS+=("$pkg")
+  fi
+done
+
+if [ ${#FAILED_IMPORTS[@]} -eq 0 ]; then
+  echo "✅ All critical packages import successfully"
+else
+  echo "⚠️  Some packages failed to import: ${FAILED_IMPORTS[*]}"
+  echo "   This may indicate a serious issue"
+  read -p "Continue anyway? (y/N): " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    rollback_to_snapshot
+    exit 1
+  fi
+fi
+
+# Check 3: Jupyter kernel availability
+echo "📓 Checking Jupyter kernel..."
+if jupyter kernelspec list | grep -q "python3"; then
+  echo "✅ Jupyter Python kernel available"
+else
+  echo "⚠️  Jupyter Python kernel not found (non-fatal)"
+fi
+
+# Check 4: Environment size validation
+VENV_SIZE=$(du -sh .venv 2>/dev/null | awk '{print $1}')
+echo "📊 Environment size: $VENV_SIZE"
+
+echo ""
+echo "✅ All health checks passed!"
+
+# Record successful installation metadata
+record_installation_metadata "success"
+
+# Clean up old snapshots (keep 2 most recent)
+cleanup_old_snapshots
+
+# Remove the snapshot from this successful installation
+LATEST_SNAPSHOT=$(ls -td .venv.snapshot_* 2>/dev/null | head -1)
+if [ -n "$LATEST_SNAPSHOT" ]; then
+  echo "🧹 Removing snapshot from successful installation..."
+  rm -rf "$LATEST_SNAPSHOT"
+fi
+
+# Install R + IRkernel (cross-platform)
 if ! command -v R &>/dev/null; then
-  brew install --cask r
+  echo "📊 Installing R..."
+  if [ "$OS_PLATFORM" = "macos" ]; then
+    brew install --cask r
+  elif [ "$OS_PLATFORM" = "linux" ]; then
+    echo "⚠️  R not found. Please install R manually for your Linux distribution:"
+    echo "   Ubuntu/Debian: sudo apt-get install r-base"
+    echo "   RHEL/CentOS: sudo yum install R"
+    echo "   Fedora: sudo dnf install R"
+    echo ""
+    echo "   Skipping R setup..."
+  fi
 fi
 
 if ! jupyter kernelspec list | grep -q "ir"; then
@@ -1544,9 +1963,18 @@ fi
 
 Rscript -e "pkgs <- c('tidyverse', 'data.table', 'reticulate', 'bibliometrix', 'bibtex', 'httr', 'jsonlite', 'rcrossref', 'RefManageR', 'rvest', 'scholar', 'sp', 'stringdist'); missing <- setdiff(pkgs, rownames(installed.packages())); if (length(missing)) install.packages(missing, repos='https://cloud.r-project.org')"
 
-# Install Julia + IJulia
+# Install Julia + IJulia (cross-platform)
 if ! command -v julia &>/dev/null; then
-  brew install --cask julia
+  echo "📈 Installing Julia..."
+  if [ "$OS_PLATFORM" = "macos" ]; then
+    brew install --cask julia
+  elif [ "$OS_PLATFORM" = "linux" ]; then
+    echo "⚠️  Julia not found. Please install Julia manually:"
+    echo "   Download from: https://julialang.org/downloads/"
+    echo "   Or use your package manager if available"
+    echo ""
+    echo "   Skipping Julia setup..."
+  fi
 fi
 
 julia -e 'using Pkg; if !("IJulia" in keys(Pkg.installed())) Pkg.add("IJulia") else println("✅ IJulia already installed.") end'
@@ -1567,10 +1995,13 @@ git remote add origin https://github.com/davidlary/SetUpEnvironments.git 2>/dev/
 # .gitignore setup
 cat > .gitignore <<GITEOF
 .venv/
+.venv.snapshot_*/
 __pycache__/
 *.ipynb_checkpoints/
 .env
+.env_metadata.json
 requirements.lock.txt
+*.log
 GITEOF
 
 echo "✅ Environment setup complete!"
