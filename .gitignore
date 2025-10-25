@@ -1,0 +1,25 @@
+# API Keys and Sensitive Data
+.env-keys.yml
+*.key
+*.pem
+.ecmwfapirc
+
+# Environment directories
+base-env/.venv/
+base-env/.pip-cache/
+base-env/.wheels/
+base-env/__pycache__/
+base-env/*.ipynb_checkpoints/
+base-env/requirements.lock.txt
+
+# Temporary files
+*.log
+*.tmp
+setup_output*.log
+setup_final.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
