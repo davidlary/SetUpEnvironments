@@ -316,23 +316,22 @@ python -c "from rpy2.robjects import r; print('✅ R integration works')"
 
 ## Package Management Strategy
 
-### Smart Constraints (10 packages)
+### Smart Constraints (8 packages)
 
 These packages have historically caused dependency conflicts. We pin specific versions:
 
 | Package | Version | Reason |
 |---------|---------|--------|
-| `bqplot` | 0.12.45 | Latest stable |
-| `ipywidgets` | 8.1.7 | Latest 8.1.x series |
-| `jupyterlab` | 4.4.9 | Latest stable |
-| `geemap` | 0.36.4 | Latest stable |
-| `plotly` | 5.15.0 | v6 has breaking changes |
-| `panel` | 1.8.2 | Latest with bokeh 3.x support |
-| `bokeh` | 3.8.0 | Latest 3.x series |
-| `voila` | 0.5.11 | Latest patch version |
-| `selenium` | 4.36.0 | Latest stable |
+| `numpy` | >=1.20.0 | Minimum version for core scientific computing compatibility |
+| `ipywidgets` | 8.1.7 | Jupyter widget compatibility with notebook ecosystem |
+| `geemap` | 0.36.4 | Pinned for Google Earth Engine API compatibility |
+| `plotly` | 5.15.0 | v6+ has breaking changes - pinned to stable 5.x |
+| `panel` | 1.8.2 | Dashboard framework pinned for stability |
+| `bokeh` | 3.8.0 | Historical stability issues with newer versions |
+| `voila` | 0.5.11 | Web app conversion stability with ipywidgets==8.1.7 |
+| `selenium` | 4.36.0 | Browser automation - latest stable version |
 
-**Removed**: `jupyter-dash` (obsolete), `nose` (deprecated since 2015)
+**Removed**: `jupyter-dash` (obsolete), `nose` (deprecated since 2015), `bqplot` and `jupyterlab` (no longer require pinning)
 
 ### Special Package Installation
 
@@ -543,4 +542,5 @@ See `Old/README.md` for historical versions:
 **Last Updated:** October 25, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.12
-**Total Packages:** Python (69 direct + dependencies), R (13), Julia (IJulia)
+**Total Packages:** Python (101 direct + dependencies), R (13), Julia (IJulia)
+**Note:** gremlinpython excluded due to unresolvable aenum dependency conflicts
