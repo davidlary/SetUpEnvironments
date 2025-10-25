@@ -23,12 +23,13 @@ function get_nested_yaml_value {
   local parent=$1
   local key=$2
   # Use grep with -A 1 to get the line after the parent, then extract the key value
-  grep -A 5 "^\s*$parent:" "$API_KEYS_YAML" | grep "^\s*$key:" | sed "s/^\s*$key:\s*\"\(.*\)\"/\1/"
+  grep -A 5 "^\s*$parent:" "$API_KEYS_YAML" | grep "^\s*$key:" | sed 's/^[^:]*:[[:space:]]*"\(.*\)"/\1/'
 }
 
 # Set the basic environment variables
+# NOTE: ANTHROPIC_API_KEY is intentionally excluded to avoid conflicts with Claude Code CLI
+# Claude Code uses its own authentication system via the Anthropic Console
 export OPENAI_API_KEY=$(get_yaml_value "openai_api_key")
-export ANTHROPIC_API_KEY=$(get_yaml_value "anthropic_api_key")
 export XAI_API_KEY=$(get_yaml_value "xai_api_key")
 export GOOGLE_API_KEY=$(get_yaml_value "google_api_key")
 
@@ -57,11 +58,8 @@ else
   echo "⚠️ OpenAI API key not set or contains default placeholder"
 fi
 
-if [ -n "$ANTHROPIC_API_KEY" ] && [ "$ANTHROPIC_API_KEY" != "your-anthropic-key-here" ]; then
-  echo "✅ Loaded Anthropic API key (starting with ${ANTHROPIC_API_KEY:0:4}...)"
-else
-  echo "⚠️ Anthropic API key not set or contains default placeholder"
-fi
+# ANTHROPIC_API_KEY intentionally not loaded to avoid conflicts with Claude Code CLI
+echo "ℹ️  ANTHROPIC_API_KEY not loaded (Claude Code uses its own authentication)"
 
 if [ -n "$XAI_API_KEY" ] && [ "$XAI_API_KEY" != "your-xai-key-here" ]; then
   echo "✅ Loaded XAI API key (starting with ${XAI_API_KEY:0:4}...)"
@@ -130,4 +128,5 @@ else
 fi
 
 echo "🔑 API keys are now available as environment variables"
-echo "   To use them in your scripts: ${OPENAI_API_KEY}, ${ANTHROPIC_API_KEY}, etc."
+echo "   To use them in your scripts: ${OPENAI_API_KEY}, ${XAI_API_KEY}, etc."
+echo "   (ANTHROPIC_API_KEY not exported to avoid conflicts with Claude Code)"
