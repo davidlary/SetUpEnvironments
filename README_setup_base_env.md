@@ -306,7 +306,7 @@ cd /path/to/your/script/directory
 
 ### Checking for Latest Versions (Update Mode)
 
-The `--update` flag helps maintain an up-to-date environment by checking if newer package versions can resolve old conflicts:
+The `--update` flag helps maintain an up-to-date environment by checking for toolchain and package updates:
 
 ```bash
 cd /path/to/your/script/directory
@@ -316,18 +316,32 @@ cd /path/to/your/script/directory
 ```
 
 **What --update mode does:**
+
+**Part 1: Toolchain Version Check**
+1. **Checks pyenv version** and reports if Homebrew has a newer version
+2. **Checks Python version** (latest stable 3.12.x or 3.13.x)
+3. **Checks pip-tools version** and tests compatibility with latest pip
+4. **Tests in isolated environment** to ensure pip-tools works with latest pip
+5. **Reports recommendations** for updating pip constraints if compatible
+
+**Part 2: Package Version Check**
 1. **Backs up** current `requirements.in`
 2. **Temporarily relaxes** smart constraints to test latest versions
 3. **Compares** current versions with latest available versions
 4. **Creates a temporary test environment** to check for conflicts
 5. **Reports findings** with version comparisons
-6. **Offers to apply updates** if no conflicts are found (10-second timeout to cancel)
-7. **Restores original** if conflicts are detected, maintaining stability
+
+**Part 3: Apply Updates (if no conflicts)**
+1. **Installs latest Python** if update available
+2. **Updates pip and pip-tools** if compatible versions found
+3. **Updates requirements.in** with latest package versions
+4. **Offers 10-second timeout** to cancel (Ctrl+C)
+5. **Restores originals** if conflicts detected, maintaining stability
 
 **When to use:**
 - Monthly or quarterly maintenance to keep environment current
-- After major package updates are announced
-- When investigating if old conflicts have been resolved
+- After major toolchain or package updates are announced
+- When investigating if old conflicts (like pip-tools/pip) have been resolved
 - Before starting new projects to ensure latest compatible versions
 
 **Note:** Update mode automatically enables adaptive conflict resolution for intelligent handling of any issues.

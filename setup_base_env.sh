@@ -51,7 +51,8 @@ for arg in "$@"; do
       echo "  --adaptive         Enable adaptive conflict resolution (slower but smarter)"
       echo "  --no-adaptive      Disable adaptive resolution (faster, default)"
       echo "  --force-reinstall  Force full reinstall by clearing .venv and caches"
-      echo "  --update           Check for latest package versions and test if old conflicts are resolved"
+      echo "  --update           Check for latest toolchain (pyenv, Python, pip, pip-tools) and package"
+      echo "                     versions, test if old conflicts are resolved, and offer to apply updates"
       echo "                     (automatically enables adaptive mode for intelligent resolution)"
       echo ""
       echo "Environment Variables:"
@@ -1004,8 +1005,109 @@ generate_smart_constraints requirements.in
 # 🔄 UPDATE MODE: Check for latest versions and test if old conflicts are resolved
 if [ "$UPDATE_MODE" = "1" ]; then
   echo ""
-  echo "🔄 UPDATE MODE: Checking for latest package versions and conflict resolution..."
+  echo "🔄 UPDATE MODE: Checking toolchain and package versions..."
   echo "==============================================================================="
+
+  # ============================================================================
+  # PART 1: TOOLCHAIN VERSION CHECKING
+  # ============================================================================
+  echo ""
+  echo "🔧 TOOLCHAIN VERSION CHECK"
+  echo "-------------------------"
+
+  # Check pyenv version
+  CURRENT_PYENV_VERSION=$(pyenv --version | awk '{print $2}')
+  echo "📦 Current pyenv: $CURRENT_PYENV_VERSION"
+
+  # Check if pyenv has updates available
+  if command -v brew &>/dev/null; then
+    LATEST_PYENV_VERSION=$(brew info pyenv | head -1 | awk '{print $3}')
+    if [ "$CURRENT_PYENV_VERSION" != "$LATEST_PYENV_VERSION" ]; then
+      echo "  📦 Update available: pyenv $CURRENT_PYENV_VERSION → $LATEST_PYENV_VERSION"
+      echo "  💡 To update: brew upgrade pyenv"
+    else
+      echo "  ✅ pyenv is up to date"
+    fi
+  fi
+
+  # Check Python version
+  CURRENT_PYTHON=$(python --version 2>&1 | awk '{print $2}')
+  LATEST_PYTHON=$(pyenv install --list | grep -E '^  3\.(1[2-3])\.[0-9]+$' | tail -1 | tr -d ' ')
+  echo ""
+  echo "🐍 Current Python: $CURRENT_PYTHON"
+  echo "🐍 Latest stable Python: $LATEST_PYTHON"
+
+  if [ "$CURRENT_PYTHON" != "$LATEST_PYTHON" ]; then
+    echo "  📦 Update available: Python $CURRENT_PYTHON → $LATEST_PYTHON"
+    echo "  💡 Will be installed automatically if you choose to apply updates"
+    PYTHON_UPDATE_AVAILABLE=1
+  else
+    echo "  ✅ Python is up to date"
+    PYTHON_UPDATE_AVAILABLE=0
+  fi
+
+  # Check pip and pip-tools versions
+  CURRENT_PIP=$(pip --version | awk '{print $2}')
+  CURRENT_PIP_TOOLS=$(pip show pip-tools 2>/dev/null | grep Version | awk '{print $2}' || echo "not installed")
+
+  echo ""
+  echo "📦 Current pip: $CURRENT_PIP (pinned to <25.2 for pip-tools compatibility)"
+  echo "📦 Current pip-tools: $CURRENT_PIP_TOOLS"
+
+  # Check for latest pip-tools and its pip compatibility
+  LATEST_PIP_TOOLS=$(pip index versions pip-tools 2>/dev/null | grep 'pip-tools' | head -1 | sed 's/.*(\(.*\))/\1/' || echo "unknown")
+
+  if [ "$LATEST_PIP_TOOLS" != "unknown" ] && [ "$CURRENT_PIP_TOOLS" != "$LATEST_PIP_TOOLS" ]; then
+    echo "  📦 Update available: pip-tools $CURRENT_PIP_TOOLS → $LATEST_PIP_TOOLS"
+
+    # Test if newer pip-tools supports newer pip in temporary venv
+    echo "  🧪 Testing pip-tools $LATEST_PIP_TOOLS compatibility with latest pip..."
+
+    TEMP_TEST_VENV=$(mktemp -d)/pip_test_venv
+    "$PYENV_ROOT/versions/$latest_python/bin/python" -m venv "$TEMP_TEST_VENV" 2>/dev/null
+    source "$TEMP_TEST_VENV/bin/activate"
+
+    # Try installing latest pip-tools and pip
+    if pip install -q --upgrade pip pip-tools 2>/dev/null; then
+      LATEST_PIP_IN_TEST=$(pip --version | awk '{print $2}')
+      LATEST_PIP_TOOLS_IN_TEST=$(pip show pip-tools | grep Version | awk '{print $2}')
+
+      # Test if pip-compile works
+      if pip-compile --help >/dev/null 2>&1; then
+        echo "  ✅ pip-tools $LATEST_PIP_TOOLS_IN_TEST is compatible with pip $LATEST_PIP_IN_TEST"
+        echo "  💡 Consider updating pip constraint from '<25.2' to '<$LATEST_PIP_IN_TEST'"
+        PIP_TOOLS_UPDATE_AVAILABLE=1
+        NEW_PIP_VERSION=$LATEST_PIP_IN_TEST
+        NEW_PIP_TOOLS_VERSION=$LATEST_PIP_TOOLS_IN_TEST
+      else
+        echo "  ⚠️  pip-tools $LATEST_PIP_TOOLS_IN_TEST has issues - keeping current versions"
+        PIP_TOOLS_UPDATE_AVAILABLE=0
+      fi
+    else
+      echo "  ⚠️  Could not test latest pip-tools - keeping current versions"
+      PIP_TOOLS_UPDATE_AVAILABLE=0
+    fi
+
+    deactivate
+    rm -rf "$(dirname "$TEMP_TEST_VENV")"
+    source .venv/bin/activate
+  else
+    echo "  ✅ pip-tools is up to date"
+    PIP_TOOLS_UPDATE_AVAILABLE=0
+  fi
+
+  echo ""
+  echo "📊 TOOLCHAIN UPDATE SUMMARY:"
+  echo "----------------------------"
+  [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 Python update available" || echo "  ✅ Python current"
+  [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 pip/pip-tools update available" || echo "  ✅ pip/pip-tools current"
+
+  # ============================================================================
+  # PART 2: PACKAGE VERSION CHECKING
+  # ============================================================================
+  echo ""
+  echo "📦 PACKAGE VERSION CHECK"
+  echo "------------------------"
 
   # Backup current requirements
   cp requirements.in requirements.in.backup
@@ -1057,11 +1159,36 @@ if [ "$UPDATE_MODE" = "1" ]; then
 
         # Ask if user wants to apply updates
         echo ""
-        echo "❓ Apply these updates? (will update requirements.in with latest versions)"
+        echo "❓ Apply these updates? (will update toolchain and requirements.in)"
         echo "   Press Ctrl+C to cancel, or wait 10 seconds to apply..."
         sleep 10
 
-        echo "📝 Applying updates to requirements.in..."
+        echo ""
+        echo "📝 APPLYING UPDATES..."
+        echo "---------------------"
+
+        # Apply toolchain updates if available
+        if [ "$PYTHON_UPDATE_AVAILABLE" = "1" ]; then
+          echo "🐍 Installing Python $LATEST_PYTHON..."
+          pyenv install -s "$LATEST_PYTHON"
+          pyenv global "$LATEST_PYTHON"
+          echo "✅ Python updated to $LATEST_PYTHON"
+        fi
+
+        if [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
+          echo "📦 Updating pip and pip-tools..."
+          pip install --upgrade pip pip-tools
+          echo "✅ pip updated to $(pip --version | awk '{print $2}')"
+          echo "✅ pip-tools updated to $(pip show pip-tools | grep Version | awk '{print $2}')"
+
+          # Update pip constraint in setup script if needed
+          if [ -n "$NEW_PIP_VERSION" ]; then
+            NEXT_MAJOR=$(echo "$NEW_PIP_VERSION" | awk -F. '{print $1"."$2+0.1}')
+            echo "💡 Consider updating pip constraint in setup_base_env.sh from 'pip<25.2' to 'pip<$NEXT_MAJOR'"
+          fi
+        fi
+
+        echo "📝 Applying package updates to requirements.in..."
         mv requirements.in.relaxed requirements.in
         echo "✅ Updated requirements.in with latest compatible versions"
       else

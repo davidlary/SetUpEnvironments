@@ -151,10 +151,11 @@ cd /path/to/your/environments/directory
 ```
 
 **What this does:**
-- Automatically checks all packages for latest versions
-- Tests if old conflicts (like protobuf) have been resolved
+- **Part 1: Toolchain Check** - Automatically checks pyenv, Python, pip, and pip-tools for updates
+- **Part 2: Package Check** - Checks all packages for latest versions
+- **Part 3: Conflict Testing** - Tests if old conflicts (like protobuf, pip-tools/pip) have been resolved
 - Creates temporary test environment to verify compatibility
-- Compares current vs. latest versions for all smart constraint packages
+- Compares current vs. latest versions for toolchain and smart constraint packages
 - Offers to apply updates if no conflicts found (with 10-second timeout)
 - Restores original configuration if conflicts are detected
 - Automatically enables adaptive mode for intelligent conflict resolution
@@ -162,13 +163,38 @@ cd /path/to/your/environments/directory
 **When to use:**
 - Monthly or quarterly maintenance
 - Before starting new projects
-- After major package updates are announced
-- When you suspect old conflicts might be resolved with newer versions
+- After major Python, pip, or package updates are announced
+- When you suspect old toolchain or package conflicts might be resolved with newer versions
 
 **Expected output:**
 ```
-🔄 UPDATE MODE: Checking for latest package versions and conflict resolution...
+🔄 UPDATE MODE: Checking toolchain and package versions...
 ===============================================================================
+
+🔧 TOOLCHAIN VERSION CHECK
+-------------------------
+📦 Current pyenv: 2.3.35
+  ✅ pyenv is up to date
+
+🐍 Current Python: 3.12.7
+🐍 Latest stable Python: 3.12.9
+  📦 Update available: Python 3.12.7 → 3.12.9
+  💡 Will be installed automatically if you choose to apply updates
+
+📦 Current pip: 24.3.1 (pinned to <25.2 for pip-tools compatibility)
+📦 Current pip-tools: 7.5.1
+  📦 Update available: pip-tools 7.5.1 → 7.6.2
+  🧪 Testing pip-tools 7.6.2 compatibility with latest pip...
+  ✅ pip-tools 7.6.2 is compatible with pip 25.0.0
+  💡 Consider updating pip constraint from '<25.2' to '<25.1'
+
+📊 TOOLCHAIN UPDATE SUMMARY:
+----------------------------
+  🔄 Python update available
+  🔄 pip/pip-tools update available
+
+📦 PACKAGE VERSION CHECK
+------------------------
 📝 Creating temporary requirements file with relaxed constraints...
 🔍 Testing latest available versions...
 ✅ Successfully compiled with relaxed constraints
@@ -186,8 +212,19 @@ cd /path/to/your/environments/directory
 💡 Recommendation: Latest versions appear to be compatible.
    Consider updating smart constraints in requirements.in
 
-❓ Apply these updates? (will update requirements.in with latest versions)
+❓ Apply these updates? (will update toolchain and requirements.in)
    Press Ctrl+C to cancel, or wait 10 seconds to apply...
+
+📝 APPLYING UPDATES...
+---------------------
+🐍 Installing Python 3.12.9...
+✅ Python updated to 3.12.9
+📦 Updating pip and pip-tools...
+✅ pip updated to 25.0.0
+✅ pip-tools updated to 7.6.2
+💡 Consider updating pip constraint in setup_base_env.sh from 'pip<25.2' to 'pip<25.1'
+📝 Applying package updates to requirements.in...
+✅ Updated requirements.in with latest compatible versions
 ```
 
 ---
