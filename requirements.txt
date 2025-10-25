@@ -9,7 +9,9 @@ aiofiles==24.1.0
 aiohappyeyeballs==2.6.1
     # via aiohttp
 aiohttp==3.13.0
-    # via langchain-community
+    # via
+    #   -r requirements.in
+    #   langchain-community
 aiosignal==1.4.0
     # via aiohttp
 alabaster==1.0.0
@@ -72,9 +74,12 @@ av==13.1.0
 babel==2.17.0
     # via
     #   jupyterlab-server
+    #   mkdocs-material
     #   sphinx
 backoff==2.2.1
     # via posthog
+backrefs==5.9
+    # via mkdocs-material
 bcrypt==5.0.0
     # via chromadb
 beautifulsoup4==4.14.2
@@ -90,6 +95,8 @@ bibtexparser==1.4.3
     # via scholarly
 bidict==0.23.1
     # via python-socketio
+black==25.9.0
+    # via -r requirements.in
 bleach[css]==6.2.0
     # via
     #   nbconvert
@@ -154,12 +161,14 @@ chromadb==0.5.23
     # via embedchain
 click==8.3.0
     # via
+    #   black
     #   cloup
     #   dask
     #   flask
     #   geobuf
     #   geocoder
     #   manim
+    #   mkdocs
     #   nltk
     #   otter-grader
     #   pip-tools
@@ -172,6 +181,8 @@ cloup==3.0.8
     # via manim
 cohere==5.19.0
     # via langchain-cohere
+colorama==0.4.6
+    # via mkdocs-material
 colorcet==3.1.0
     # via dash-leaflet
 coloredlogs==15.0.1
@@ -184,8 +195,10 @@ contourpy==1.3.3
     # via
     #   bokeh
     #   matplotlib
-coverage==7.11.0
-    # via nbval
+coverage[toml]==7.11.0
+    # via
+    #   nbval
+    #   pytest-cov
 curl-cffi==0.13.0
     # via yfinance
 cycler==0.12.1
@@ -242,6 +255,10 @@ dill==0.3.9
     # via
     #   fast-dash
     #   otter-grader
+diskcache==5.6.3
+    # via
+    #   -r requirements.in
+    #   graphiti-core
 distro==1.9.0
     # via
     #   anthropic
@@ -257,6 +274,10 @@ docutils==0.21.2
     #   sphinx
     #   sphinx-rtd-theme
 duckdb==1.4.1
+    # via
+    #   -r requirements.in
+    #   duckdb-engine
+duckdb-engine==0.17.0
     # via -r requirements.in
 durationpy==0.10
     # via kubernetes
@@ -265,6 +286,8 @@ earthengine-api==1.6.12
     #   -r requirements.in
     #   eerepr
     #   geemap
+ebooklib==0.19
+    # via -r requirements.in
 ecmwf-datastores-client==0.4.0
     # via cdsapi
 editorconfig==0.17.1
@@ -298,6 +321,8 @@ filelock==3.20.0
     # via
     #   huggingface-hub
     #   transformers
+flake8==7.3.0
+    # via -r requirements.in
 flask==3.1.2
     # via
     #   -r requirements.in
@@ -349,10 +374,14 @@ geopandas==1.1.1
     # via
     #   -r requirements.in
     #   dask-geopandas
+ghp-import==2.1.0
+    # via mkdocs
 gitdb==4.0.12
     # via gitpython
 gitpython==3.1.45
-    # via streamlit
+    # via
+    #   -r requirements.in
+    #   streamlit
 glcontext==3.0.0
     # via moderngl
 glfw==2.10.0
@@ -397,8 +426,12 @@ gradio==5.49.1
     # via -r requirements.in
 gradio-client==1.13.3
     # via gradio
+graphiti-core==0.22.0
+    # via -r requirements.in
 graphviz==0.21
-    # via catboost
+    # via
+    #   -r requirements.in
+    #   catboost
 greenlet==3.2.4
     # via playwright
 groovy==0.1.2
@@ -480,6 +513,7 @@ importlib-metadata==8.7.0
     # via
     #   dash
     #   opentelemetry-api
+    #   python-arango
 importlib-resources==6.5.2
     # via chromadb
 iniconfig==2.1.0
@@ -506,6 +540,7 @@ ipython==9.6.0
     #   jupyter-console
     #   nbgrader
     #   otter-grader
+    #   pyvis
 ipython-pygments-lexers==1.1.1
     # via ipython
 ipywidgets==8.1.7
@@ -542,10 +577,13 @@ jinja2==3.1.6
     #   jupyter-server
     #   jupyterlab
     #   jupyterlab-server
+    #   mkdocs
+    #   mkdocs-material
     #   nbconvert
     #   nbgrader
     #   otter-grader
     #   pydeck
+    #   pyvis
     #   sphinx
 jiter==0.11.0
     # via
@@ -561,6 +599,8 @@ json5==0.12.1
     # via jupyterlab-server
 jsonpatch==1.33
     # via langchain-core
+jsonpickle==4.1.1
+    # via pyvis
 jsonpointer==3.0.0
     # via
     #   jsonpatch
@@ -684,8 +724,12 @@ logilab-common==2.1.0
     # via
     #   astroid
     #   pylint
+loguru==0.7.3
+    # via -r requirements.in
 lxml==6.0.2
     # via
+    #   -r requirements.in
+    #   ebooklib
     #   free-proxy
     #   pandas-datareader
     #   yahoofinancials
@@ -698,7 +742,11 @@ manimpango==0.6.0
 mapbox-earcut==1.0.3
     # via manim
 markdown==3.9
-    # via panel
+    # via
+    #   mkdocs
+    #   mkdocs-material
+    #   panel
+    #   pymdown-extensions
 markdown-it-py==4.0.0
     # via
     #   jupytext
@@ -711,6 +759,7 @@ markupsafe==3.0.3
     #   gradio
     #   jinja2
     #   mako
+    #   mkdocs
     #   nbconvert
     #   werkzeug
 marshmallow==3.26.1
@@ -729,6 +778,8 @@ matplotlib-inline==0.1.7
     # via
     #   ipykernel
     #   ipython
+mccabe==0.7.0
+    # via flake8
 mdit-py-plugins==0.5.0
     # via
     #   jupytext
@@ -737,8 +788,22 @@ mdurl==0.1.2
     # via markdown-it-py
 mem0ai==0.1.115
     # via embedchain
+mergedeep==1.3.4
+    # via
+    #   mkdocs
+    #   mkdocs-get-deps
 mistune==3.1.4
     # via nbconvert
+mkdocs==1.6.1
+    # via
+    #   -r requirements.in
+    #   mkdocs-material
+mkdocs-get-deps==0.2.0
+    # via mkdocs
+mkdocs-material==9.6.22
+    # via -r requirements.in
+mkdocs-material-extensions==1.3.1
+    # via mkdocs-material
 mmh3==5.2.0
     # via chromadb
 moderngl==5.12.0
@@ -765,9 +830,13 @@ multitasking==0.0.12
     # via yfinance
 multiurl==0.3.7
     # via ecmwf-datastores-client
+mypy==1.18.2
+    # via -r requirements.in
 mypy-extensions==1.1.0
     # via
+    #   black
     #   logilab-common
+    #   mypy
     #   typing-inspect
 narwhals==2.8.0
     # via
@@ -798,6 +867,10 @@ nbgrader==0.9.5
     # via -r requirements.in
 nbval==0.11.0
     # via -r requirements.in
+neo4j==6.0.2
+    # via
+    #   -r requirements.in
+    #   graphiti-core
 nest-asyncio==1.6.0
     # via
     #   dash
@@ -805,7 +878,10 @@ nest-asyncio==1.6.0
 netcdf4==1.7.3
     # via -r requirements.in
 networkx==3.5
-    # via manim
+    # via
+    #   -r requirements.in
+    #   manim
+    #   pyvis
 nltk==3.9.2
     # via -r requirements.in
 notebook==7.4.7
@@ -833,6 +909,7 @@ numpy==2.2.6
     #   geopandas
     #   gptcache
     #   gradio
+    #   graphiti-core
     #   imageio
     #   isosurfaces
     #   k3d
@@ -873,6 +950,7 @@ openai==1.109.1
     # via
     #   -r requirements.in
     #   embedchain
+    #   graphiti-core
     #   langchain-openai
     #   mem0ai
 opencv-python==4.12.0.88
@@ -934,10 +1012,12 @@ p5==0.7.1
 packaging==25.0
     # via
     #   altair
+    #   black
     #   bokeh
     #   build
     #   dask
     #   dask-geopandas
+    #   duckdb-engine
     #   geopandas
     #   gradio
     #   gradio-client
@@ -952,6 +1032,7 @@ packaging==25.0
     #   langsmith
     #   marshmallow
     #   matplotlib
+    #   mkdocs
     #   nbconvert
     #   onnxruntime
     #   opentelemetry-instrumentation
@@ -960,11 +1041,14 @@ packaging==25.0
     #   pooch
     #   pyogrio
     #   pytest
+    #   python-arango
     #   sphinx
     #   streamlit
     #   transformers
     #   vispy
     #   xarray
+paginate==0.5.7
+    # via mkdocs-material
 pandas==2.3.3
     # via
     #   -r requirements.in
@@ -983,6 +1067,7 @@ pandas==2.3.3
     #   seaborn
     #   spyndex
     #   streamlit
+    #   streamlit-aggrid
     #   xarray
     #   yfinance
 pandas-datareader==0.10.0
@@ -999,6 +1084,11 @@ parso==0.8.5
     # via jedi
 partd==1.4.2
     # via dask
+pathspec==0.12.1
+    # via
+    #   black
+    #   mkdocs
+    #   mypy
 peewee==3.18.2
     # via
     #   yahoofinancials
@@ -1023,7 +1113,9 @@ pip-tools==7.5.1
     # via -r requirements.in
 platformdirs==4.5.0
     # via
+    #   black
     #   jupyter-core
+    #   mkdocs-get-deps
     #   pooch
     #   yfinance
 playwright==1.55.0
@@ -1035,7 +1127,9 @@ plotly==5.15.0
     #   dash
     #   geemap
 pluggy==1.6.0
-    # via pytest
+    # via
+    #   pytest
+    #   pytest-cov
 pooch==1.8.2
     # via pyvista
 portalocker==3.2.0
@@ -1044,6 +1138,7 @@ posthog==3.25.0
     # via
     #   chromadb
     #   embedchain
+    #   graphiti-core
     #   mem0ai
 proglog==0.1.12
     # via moviepy
@@ -1072,7 +1167,9 @@ protobuf==6.33.0
     #   streamlit
     #   yfinance
 psutil==7.1.0
-    # via ipykernel
+    # via
+    #   -r requirements.in
+    #   ipykernel
 psygnal==0.15.0
     # via anywidget
 ptyprocess==0.7.0
@@ -1097,16 +1194,20 @@ pybtex==0.25.1
     # via -r requirements.in
 pycairo==1.28.0
     # via manim
+pycodestyle==2.14.0
+    # via flake8
 pycparser==2.23
     # via cffi
 pydantic==2.11.10
     # via
+    #   -r requirements.in
     #   anthropic
     #   chromadb
     #   cohere
     #   dash-extensions
     #   fastapi
     #   gradio
+    #   graphiti-core
     #   langchain
     #   langchain-cohere
     #   langchain-core
@@ -1124,12 +1225,16 @@ pydantic-settings==2.11.0
     # via langchain-community
 pydeck==0.9.1
     # via streamlit
+pydot==4.0.1
+    # via -r requirements.in
 pydub==0.25.1
     # via
     #   gradio
     #   manim
 pyee==13.0.0
     # via playwright
+pyflakes==3.4.0
+    # via flake8
 pyglet==2.1.9
     # via moderngl-window
 pyglm==2.8.2
@@ -1140,12 +1245,21 @@ pygments==2.19.2
     #   ipython-pygments-lexers
     #   jupyter-console
     #   manim
+    #   mkdocs-material
     #   nbconvert
     #   pytest
     #   rich
     #   sphinx
+pyjwt==2.10.1
+    # via
+    #   -r requirements.in
+    #   python-arango
 pylint==1.4.0
     # via pyplantuml
+pymdown-extensions==10.16.1
+    # via mkdocs-material
+pymupdf==1.26.5
+    # via -r requirements.in
 pyobjc-core==11.1
     # via pyobjc-framework-cocoa
 pyobjc-framework-cocoa==11.1
@@ -1161,6 +1275,8 @@ pyparsing==3.2.5
     #   bibtexparser
     #   httplib2
     #   matplotlib
+    #   pydot
+    #   rdflib
 pypdf==5.9.0
     # via embedchain
 pyperclip==1.11.0
@@ -1189,6 +1305,14 @@ pytest==8.4.2
     # via
     #   -r requirements.in
     #   nbval
+    #   pytest-asyncio
+    #   pytest-cov
+pytest-asyncio==1.2.0
+    # via -r requirements.in
+pytest-cov==7.0.0
+    # via -r requirements.in
+python-arango==8.2.2
+    # via -r requirements.in
 python-box==7.3.2
     # via
     #   geemap
@@ -1196,6 +1320,7 @@ python-box==7.3.2
 python-dateutil==2.9.0.post0
     # via
     #   arrow
+    #   ghp-import
     #   jupyter-client
     #   kubernetes
     #   matplotlib
@@ -1203,9 +1328,13 @@ python-dateutil==2.9.0.post0
     #   nbgrader
     #   pandas
     #   posthog
+python-decouple==3.8
+    # via streamlit-aggrid
 python-dotenv==1.1.1
     # via
+    #   -r requirements.in
     #   embedchain
+    #   graphiti-core
     #   moviepy
     #   pydantic-settings
     #   scholarly
@@ -1220,13 +1349,18 @@ python-on-whales==0.78.0
     # via otter-grader
 python-socketio==5.14.2
     # via flask-socketio
+pytokens==0.2.0
+    # via black
 pytz==2025.2
     # via
     #   mem0ai
     #   multiurl
+    #   neo4j
     #   pandas
     #   yahoofinancials
     #   yfinance
+pyvis==0.3.2
+    # via -r requirements.in
 pyvista==0.46.3
     # via -r requirements.in
 pyviz-comms==3.0.6
@@ -1235,6 +1369,7 @@ pywebio==1.8.4
     # via -r requirements.in
 pyyaml==6.0.3
     # via
+    #   -r requirements.in
     #   bokeh
     #   chromadb
     #   dash-leaflet
@@ -1248,11 +1383,17 @@ pyyaml==6.0.3
     #   langchain
     #   langchain-community
     #   langchain-core
+    #   mkdocs
+    #   mkdocs-get-deps
     #   nbgrader
     #   otter-grader
     #   pybtex
+    #   pymdown-extensions
+    #   pyyaml-env-tag
     #   transformers
     #   uvicorn
+pyyaml-env-tag==1.1
+    # via mkdocs
 pyzmq==27.1.0
     # via
     #   ipykernel
@@ -1265,6 +1406,12 @@ rapidfuzz==3.14.1
     # via nbgrader
 ratelim==0.1.6
     # via geocoder
+rdflib==7.3.0
+    # via
+    #   -r requirements.in
+    #   sparqlwrapper
+redis==7.0.0
+    # via -r requirements.in
 referencing==0.37.0
     # via
     #   jsonschema
@@ -1297,6 +1444,7 @@ requests[socks]==2.32.5
     #   langchain
     #   langchain-community
     #   langsmith
+    #   mkdocs-material
     #   multiurl
     #   nbgrader
     #   otter-grader
@@ -1305,6 +1453,7 @@ requests[socks]==2.32.5
     #   panel
     #   pooch
     #   posthog
+    #   python-arango
     #   requests-oauthlib
     #   requests-toolbelt
     #   scholarly
@@ -1321,7 +1470,9 @@ requests-oauthlib==2.0.0
     #   kubernetes
     #   tweepy
 requests-toolbelt==1.0.0
-    # via langsmith
+    # via
+    #   langsmith
+    #   python-arango
 retrying==1.4.2
     # via dash
 rfc3339-validator==0.1.4
@@ -1366,6 +1517,7 @@ scikit-learn==1.7.2
     # via -r requirements.in
 scipy==1.16.2
     # via
+    #   -r requirements.in
     #   catboost
     #   lightgbm
     #   manim
@@ -1401,6 +1553,7 @@ six==1.17.0
     # via
     #   astroid
     #   catboost
+    #   ebooklib
     #   geobuf
     #   geocoder
     #   jsbeautifier
@@ -1425,6 +1578,8 @@ sortedcontainers==2.4.0
     # via trio
 soupsieve==2.8
     # via beautifulsoup4
+sparqlwrapper==2.0.0
+    # via -r requirements.in
 sphinx==8.2.3
     # via
     #   fica
@@ -1451,6 +1606,7 @@ spyndex==0.8.0
 sqlalchemy==2.0.44
     # via
     #   alembic
+    #   duckdb-engine
     #   embedchain
     #   langchain
     #   langchain-community
@@ -1465,6 +1621,10 @@ starlette==0.48.0
     #   fastapi
     #   gradio
 streamlit==1.50.0
+    # via
+    #   -r requirements.in
+    #   streamlit-aggrid
+streamlit-aggrid==1.1.9
     # via -r requirements.in
 svgelements==1.9.6
     # via manim
@@ -1479,6 +1639,7 @@ tabulate==0.9.0
 tenacity==9.1.2
     # via
     #   chromadb
+    #   graphiti-core
     #   langchain-community
     #   langchain-core
     #   plotly
@@ -1593,6 +1754,7 @@ typing-extensions==4.15.0
     #   langchain-core
     #   logilab-common
     #   manim
+    #   mypy
     #   openai
     #   opentelemetry-api
     #   opentelemetry-exporter-otlp-proto-grpc
@@ -1602,6 +1764,7 @@ typing-extensions==4.15.0
     #   pydantic
     #   pydantic-core
     #   pyee
+    #   pytest-asyncio
     #   python-on-whales
     #   pyvista
     #   referencing
@@ -1634,6 +1797,7 @@ uritemplate==4.2.0
 urllib3[socks]==2.5.0
     # via
     #   kubernetes
+    #   python-arango
     #   qdrant-client
     #   requests
     #   selenium
@@ -1655,7 +1819,9 @@ voila==0.5.11
 vtk==9.5.2
     # via pyvista
 watchdog==6.0.0
-    # via manim
+    # via
+    #   manim
+    #   mkdocs
 watchfiles==1.1.1
     # via uvicorn
 wcwidth==0.2.14

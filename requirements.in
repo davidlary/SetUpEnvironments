@@ -1,111 +1,170 @@
-# 📊 Data Manipulation
+# 📊 Data Manipulation & Analysis
 numpy>=1.20.0  # Smart constraint
-pandas
-pyarrow
-duckdb
-dask-geopandas
+pandas>=2.0.0  # Data manipulation and analysis (QA requirement)
+pyarrow  # Columnar data format
+duckdb>=0.9.0  # In-process SQL OLAP database (QA requirement)
+dask-geopandas  # Parallel geospatial processing
+scipy  # Scientific computing (>=1.10.0)
+pydantic>=2.4.0  # Data validation and settings management (QA requirement)
 
 # 🤖 Machine Learning
-scikit-learn
-xgboost
-lightgbm
-catboost
-h2o
+scikit-learn  # Machine learning library (>=1.3.0)
+xgboost  # Gradient boosting
+lightgbm  # Gradient boosting
+catboost  # Gradient boosting
+h2o  # Machine learning platform
 
-# 📈 Visualization
-matplotlib
-seaborn
-dash-leaflet
-fast-dash
-# jupyter-dash - REMOVED: Obsolete (archived June 2024), use dash>=2.11.0 instead
+# 📈 Visualization & Plotting
+matplotlib  # Basic plotting (>=3.7.0)
+seaborn  # Statistical visualization (>=0.12.0)
 plotly==5.15.0  # Smart constraint
 bokeh==3.8.0  # Smart constraint
-altair
+altair  # Statistical visualization grammar
+dash-leaflet  # Interactive maps
+fast-dash  # Fast dashboard creation
+# jupyter-dash - REMOVED: Obsolete (archived June 2024), use dash>=2.11.0 instead
+pyvis  # Network visualization (>=0.3.2)
 
 # 🌍 Geospatial Tools
-geopandas
+geopandas  # Geospatial data processing
 geemap==0.36.4  # Smart constraint
-earthengine-api
-spyndex
+earthengine-api  # Google Earth Engine API
+spyndex  # Spectral indices
 
 # 🧪 Interactive Development
-jupyter
-ipython
+jupyter  # Interactive notebooks
+ipython  # Enhanced Python shell
 ipywidgets==8.1.7  # Smart constraint
 voila==0.5.11  # Smart constraint
 
 # 🔥 Thermodynamics / Chemistry
-cantera
+cantera  # Chemical kinetics and thermodynamics
 
 # 🖼️ Utilities & Video Processing
-Pillow
-embedchain
-moviepy
-imageio
-opencv-python
-ffmpeg-python
+Pillow  # Image processing
+embedchain  # Embedding chains
+moviepy  # Video editing
+imageio  # Image I/O
+opencv-python  # Computer vision
+ffmpeg-python  # Video processing
 
 # 🎞️ Scientific Animation & Creative Tools
-manim
-pyvista
-k3d
-sympy
-p5
+manim  # Mathematical animations
+pyvista  # 3D plotting and mesh analysis
+k3d  # 3D visualization for Jupyter
+sympy  # Symbolic mathematics
+p5  # Creative coding
 
 # 🌐 Web Deployment Tools
-streamlit
-dash
+streamlit>=1.28.0  # Web apps for ML (QA requirement)
+streamlit-aggrid>=0.3.4  # Streamlit data grid component (QA requirement)
+dash  # Web applications
 panel==1.8.2  # Smart constraint
-gradio
-flask
-fastapi
-pywebio
-nbconvert
+gradio  # ML model interfaces
+flask  # Web framework
+fastapi  # Modern web API framework
+pywebio  # Web-based GUI
+nbconvert  # Notebook conversion
 
-# 🧪 Autograding Tools
-nbgrader
-otter-grader
-nbval
-pytest
+# 🧪 Development & Testing
+pytest>=7.4.0  # Unit testing framework (QA requirement)
+pytest-cov  # Test coverage reporting (>=4.0.0)
+pytest-asyncio  # Async testing support (>=0.21.0)
+nbgrader  # Notebook autograding
+otter-grader  # Autograding system
+nbval  # Notebook validation
+black  # Code formatting (>=23.7.0)
+flake8  # Code linting (>=6.0.0)
+mypy  # Static type checking (>=1.5.0)
 
-# 🤖 API Clients
-openai
-anthropic
-requests
-httpx
+# 🤖 API Clients & Web Requests
+openai>=1.3.0  # OpenAI API client (QA requirement)
+anthropic  # Anthropic API client
+requests  # HTTP library (>=2.28.0)
+httpx  # Async HTTP client (>=0.24.0)
+aiohttp  # Async HTTP client/server (>=3.8.0)
 
-# Dependency manager
-pip-tools
+# 🔍 Content Processing & Text Extraction
+PyMuPDF>=1.23.0  # PDF processing with mathematical notation (QA requirement)
+ebooklib  # EPUB file processing (>=0.18)
+beautifulsoup4  # HTML/XML parsing (>=4.11.0)
+lxml  # Fast XML processing (>=4.9.0)
 
-# Dynamic conflict resolution constraints
-transformers
+# 📊 Graph Processing & Knowledge Management
+graphiti-core  # Graph processing core (>=0.11.6)
+diskcache  # Disk-based caching (>=5.6.3)
+networkx  # Network analysis (>=3.1)
+
+# 🔗 SPARQL & RDF Processing
+SPARQLWrapper  # SPARQL query wrapper (>=2.0.0)
+rdflib  # RDF library (>=7.0.0)
+
+# 🗄️ Database & Caching
+duckdb-engine  # DuckDB SQLAlchemy engine (>=0.17.0)
+redis  # Redis client (>=4.6.0)
+
+# 🌐 Graph Databases
+python-arango  # ArangoDB client (>=8.2.0)
+neo4j  # Neo4j client (>=5.28.0)
+# gremlinpython  # Gremlin graph query language (>=3.7.0) - TEMPORARILY DISABLED: aenum dependency conflict (all versions 3.2.3-3.7.4 require aenum<4.0.0 which conflicts with other packages)
+
+# 🔐 Security & Authentication
+PyJWT  # JSON Web Token implementation (>=2.10.0)
+
+# ⚙️ Configuration & Logging
+PyYAML  # YAML parser (>=6.0)
+python-dotenv  # Environment variable loader (>=1.0.0)
+loguru  # Advanced logging (>=0.7.0)
+
+# 📊 System Monitoring
+psutil>=5.9.0  # System and process utilities (QA requirement)
+
+# 🔧 Version Control Integration
+GitPython>=3.1.37  # Git repository interface (QA requirement)
+
+# 🗺️ Mind Map Generation
+pydot  # Graphviz interface (>=1.4.2)
+graphviz  # Graph visualization (>=0.20.1)
+# Note: Graphviz system package also required
+# macOS: brew install graphviz
+# Ubuntu/Debian: apt-get install graphviz
+# CentOS/RHEL: yum install graphviz
+
+# 📚 Documentation
+mkdocs  # Documentation generator (>=1.5.0)
+mkdocs-material  # Material theme for MkDocs (>=9.2.0)
+
+# 🤖 Machine Learning - Advanced
+transformers  # Hugging Face transformers (conflicts with chromadb tokenizers)
 
 # 🌦️ Scientific Data & Weather APIs
-cdsapi
+cdsapi  # Climate Data Store API client for ECMWF data (>=0.5.0)
 # ecmwfapi - installed separately from GitHub (not on PyPI)
-netCDF4
+netCDF4  # Scientific data format for satellite/climate data (>=1.6.0)
 
 # 💰 Financial Data APIs
-yfinance
-yahoofinancials
-pandas-datareader
+yfinance  # Yahoo Finance data downloader (>=0.2.0)
+yahoofinancials  # Yahoo Finance scraper (>=1.6.0)
+pandas-datareader  # Financial/economic data readers (>=0.10.0)
 
 # 🗺️ Census & Geographic Data
-census
-us
+census  # US Census data API wrapper (>=0.8.0)
+us  # US state and territory metadata (>=2.0.0)
 
 # 🌐 Web Automation & Scraping
 selenium==4.36.0  # Smart constraint
-beautifulsoup4
-scholarly
-tweepy
+scholarly  # Google Scholar web scraping (>=1.7.0)
+tweepy  # Twitter/X API client (>=4.0.0)
 
 # 📚 Bibliography & Documentation
-pybtex
-pyplantuml
+pybtex  # Bibliography processing (>=0.24.0)
+pyplantuml  # PlantUML diagram generation (>=0.3.0)
 
 # 🧪 Testing (Legacy Support)
 # nose - REMOVED: Deprecated since 2015, use pytest instead
 
 # 🔤 Natural Language Processing
-nltk  # Natural Language Toolkit
+nltk  # Natural Language Toolkit (>=3.8.0)
+
+# Dependency manager
+pip-tools  # Dependency management
