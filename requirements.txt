@@ -79,6 +79,7 @@ bcrypt==5.0.0
     # via chromadb
 beautifulsoup4==4.14.2
     # via
+    #   -r requirements.in
     #   embedchain
     #   manim
     #   nbconvert

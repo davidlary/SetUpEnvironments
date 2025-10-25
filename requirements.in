@@ -96,6 +96,7 @@ us
 
 # 🌐 Web Automation & Scraping
 selenium==4.36.0  # Smart constraint
+beautifulsoup4
 scholarly
 tweepy
 
