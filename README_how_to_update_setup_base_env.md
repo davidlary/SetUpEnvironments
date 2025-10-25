@@ -31,6 +31,11 @@ REQUIREMENTS:
    - Test each new/updated package installation and basic functionality
    - Check for package conflicts using pip check
    - Document any conflicts found (breaking vs. non-breaking)
+   - **CRITICAL: Check if old conflicts are now resolvable:**
+     * Try upgrading packages with known conflicts to latest versions
+     * Verify if smart constraints can be relaxed with newer package versions
+     * Document investigation results even if conflicts remain unresolvable
+     * Preserve working state - revert if new versions create more conflicts
 
 3. ENVIRONMENT UPDATES:
    - Add new packages to appropriate category in base-env/requirements.in
@@ -148,16 +153,15 @@ PACKAGES TO ADD/UPDATE:
 
 ### Sophisticated System Features to Preserve
 
-1. **Smart Constraints (10 packages)**
-   - bqplot==0.12.45
-   - ipywidgets==8.1.7
-   - jupyterlab==4.4.9
-   - geemap==0.36.4
-   - plotly==5.15.0
-   - panel==1.8.2
-   - bokeh==3.8.0
-   - voila==0.5.11
-   - selenium==4.36.0
+1. **Smart Constraints (8 packages)**
+   - numpy>=1.20.0 (minimum version for scientific computing)
+   - ipywidgets==8.1.7 (Jupyter widget compatibility)
+   - geemap==0.36.4 (Google Earth Engine API compatibility)
+   - plotly==5.15.0 (v6+ has breaking changes)
+   - panel==1.8.2 (dashboard framework stability)
+   - bokeh==3.8.0 (historical stability issues)
+   - voila==0.5.11 (web app conversion stability)
+   - selenium==4.36.0 (browser automation latest stable)
 
 2. **Performance Optimizations**
    - Early exit detection

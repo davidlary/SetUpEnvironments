@@ -46,7 +46,7 @@ cd ~/your-project-directory
 ## Key Features
 
 ### 🎯 Smart Package Management
-- **Smart Constraints System**: Pre-defined version pins for 10 historically problematic packages
+- **Smart Constraints System**: Pre-defined version pins for 8 historically problematic packages
 - **Hybrid Conflict Resolution**: Two-tier conflict resolution strategy
 - **Backtracking Prevention**: Optimized constraints reduce pip solver time
 - **Obsolescence Management**: Automatic removal of deprecated packages (jupyter-dash, nose)
@@ -59,7 +59,8 @@ cd ~/your-project-directory
 - **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **69 Direct Python Packages** (+ dependencies): ML, visualization, geospatial, web deployment, APIs, testing, web scraping
+- **101 Direct Python Packages** (+ dependencies): ML, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation
+  - Note: gremlinpython excluded due to unresolvable aenum dependency conflicts
 - **13 R Packages**: tidyverse, bibliometrix, reticulate, and more
 - **Julia Environment**: IJulia kernel with automatic setup
 
