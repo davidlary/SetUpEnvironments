@@ -331,12 +331,15 @@ cd /path/to/your/script/directory
 4. **Creates a temporary test environment** to check for conflicts
 5. **Reports findings** with version comparisons
 
-**Part 3: Apply Updates (if no conflicts)**
-1. **Installs latest Python** if update available
-2. **Updates pip and pip-tools** if compatible versions found
-3. **Updates requirements.in** with latest package versions
-4. **Offers 10-second timeout** to cancel (Ctrl+C)
-5. **Restores originals** if conflicts detected, maintaining stability
+**Part 3: Evaluate Results and Conditionally Apply Updates**
+1. **Evaluates ALL test results** (toolchain compatibility + package conflicts)
+2. **ONLY offers to apply updates if ALL tests pass** - ensures maximum stability
+3. **Installs latest Python** if update available and tests passed
+4. **Updates pip and pip-tools** if compatible versions found and tests passed
+5. **Updates requirements.in** with latest package versions if tests passed
+6. **Offers 10-second timeout** to cancel (Ctrl+C) before applying
+7. **Refuses to apply updates** if any test fails, maintaining stability
+8. **Provides detailed reasoning** when updates cannot be applied safely
 
 **When to use:**
 - Monthly or quarterly maintenance to keep environment current

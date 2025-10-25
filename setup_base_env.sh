@@ -1145,91 +1145,126 @@ if [ "$UPDATE_MODE" = "1" ]; then
     "$PYENV_ROOT/versions/$latest_python/bin/python" -m venv "$TEMP_VENV"
     source "$TEMP_VENV/bin/activate"
 
-    # Install with relaxed constraints
+    # Install with relaxed constraints and test for conflicts
+    PACKAGES_TEST_PASSED=0
     if pip install -q -r requirements.txt.test 2>install_test.log; then
       if pip check >conflict_test.log 2>&1; then
-        echo "✅ No conflicts detected with latest versions!"
-        echo ""
-        echo "💡 Recommendation: Latest versions appear to be compatible."
-        echo "   Consider updating smart constraints in requirements.in"
-
-        # Deactivate and return to main venv
-        deactivate
-        source .venv/bin/activate
-
-        # Ask if user wants to apply updates
-        echo ""
-        echo "❓ Apply these updates? (will update toolchain and requirements.in)"
-        echo "   Press Ctrl+C to cancel, or wait 10 seconds to apply..."
-        sleep 10
-
-        echo ""
-        echo "📝 APPLYING UPDATES..."
-        echo "---------------------"
-
-        # Apply toolchain updates if available
-        if [ "$PYTHON_UPDATE_AVAILABLE" = "1" ]; then
-          echo "🐍 Installing Python $LATEST_PYTHON..."
-          pyenv install -s "$LATEST_PYTHON"
-          pyenv global "$LATEST_PYTHON"
-          echo "✅ Python updated to $LATEST_PYTHON"
-        fi
-
-        if [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
-          echo "📦 Updating pip and pip-tools..."
-          pip install --upgrade pip pip-tools
-          echo "✅ pip updated to $(pip --version | awk '{print $2}')"
-          echo "✅ pip-tools updated to $(pip show pip-tools | grep Version | awk '{print $2}')"
-
-          # Update pip constraint in setup script if needed
-          if [ -n "$NEW_PIP_VERSION" ]; then
-            NEXT_MAJOR=$(echo "$NEW_PIP_VERSION" | awk -F. '{print $1"."$2+0.1}')
-            echo "💡 Consider updating pip constraint in setup_base_env.sh from 'pip<25.2' to 'pip<$NEXT_MAJOR'"
-          fi
-        fi
-
-        echo "📝 Applying package updates to requirements.in..."
-        mv requirements.in.relaxed requirements.in
-        echo "✅ Updated requirements.in with latest compatible versions"
+        echo "✅ No conflicts detected with latest package versions!"
+        PACKAGES_TEST_PASSED=1
       else
-        echo "⚠️  Conflicts detected with latest versions:"
+        echo "⚠️  Conflicts detected with latest package versions:"
         head -5 conflict_test.log
-        echo ""
-        echo "🛡️  Keeping current smart constraints to maintain stability"
-
-        # Deactivate and return to main venv
-        deactivate
-        source .venv/bin/activate
-
-        # Restore backup
-        mv requirements.in.backup requirements.in
+        PACKAGES_TEST_PASSED=0
       fi
     else
-      echo "❌ Installation failed with latest versions"
-      echo "🛡️  Keeping current smart constraints to maintain stability"
-
-      # Deactivate and return to main venv
-      deactivate
-      source .venv/bin/activate
-
-      # Restore backup
-      mv requirements.in.backup requirements.in
+      echo "❌ Installation failed with latest package versions"
+      cat install_test.log | head -5
+      PACKAGES_TEST_PASSED=0
     fi
+
+    # Deactivate and return to main venv
+    deactivate
+    source .venv/bin/activate
 
     # Clean up test environment
     rm -rf "$(dirname "$TEMP_VENV")"
   else
     echo "❌ Failed to compile with relaxed constraints"
     cat update_test.log | head -10
+    PACKAGES_TEST_PASSED=0
+  fi
+
+  # ============================================================================
+  # PART 3: EVALUATE ALL RESULTS AND CONDITIONALLY APPLY UPDATES
+  # ============================================================================
+  echo ""
+  echo "📊 OVERALL UPDATE EVALUATION"
+  echo "-----------------------------"
+
+  # Check if pip-tools update has issues
+  TOOLCHAIN_SAFE=1
+  if [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
+    # pip-tools update was tested and found compatible
+    echo "  ✅ Toolchain: pip-tools update compatible"
+  else
+    echo "  ✅ Toolchain: No updates needed or already current"
+  fi
+
+  # Check package test results
+  if [ "$PACKAGES_TEST_PASSED" = "1" ]; then
+    echo "  ✅ Packages: No conflicts with latest versions"
+  else
+    echo "  ❌ Packages: Conflicts or installation failures detected"
+    TOOLCHAIN_SAFE=0
+  fi
+
+  echo ""
+
+  # Only offer to apply updates if ALL tests passed
+  if [ "$PACKAGES_TEST_PASSED" = "1" ] && [ "$TOOLCHAIN_SAFE" = "1" ]; then
+    echo "✅ ALL TESTS PASSED - Safe to apply updates!"
     echo ""
-    echo "🛡️  Current smart constraints are necessary - keeping them"
+    echo "💡 Summary of available updates:"
+    [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "   • Python: $CURRENT_PYTHON → $LATEST_PYTHON"
+    [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip-tools: $CURRENT_PIP_TOOLS → $NEW_PIP_TOOLS_VERSION"
+    [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip: $CURRENT_PIP → $NEW_PIP_VERSION"
+    echo "   • Packages: Update smart constraints to latest compatible versions"
+    echo ""
+
+    # Ask if user wants to apply updates
+    echo "❓ Apply these updates? (will update toolchain and requirements.in)"
+    echo "   Press Ctrl+C to cancel, or wait 10 seconds to apply..."
+    sleep 10
+
+    echo ""
+    echo "📝 APPLYING UPDATES..."
+    echo "---------------------"
+
+    # Apply toolchain updates if available
+    if [ "$PYTHON_UPDATE_AVAILABLE" = "1" ]; then
+      echo "🐍 Installing Python $LATEST_PYTHON..."
+      pyenv install -s "$LATEST_PYTHON"
+      pyenv global "$LATEST_PYTHON"
+      echo "✅ Python updated to $LATEST_PYTHON"
+    fi
+
+    if [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
+      echo "📦 Updating pip and pip-tools..."
+      pip install --upgrade pip pip-tools
+      echo "✅ pip updated to $(pip --version | awk '{print $2}')"
+      echo "✅ pip-tools updated to $(pip show pip-tools | grep Version | awk '{print $2}')"
+
+      # Update pip constraint in setup script if needed
+      if [ -n "$NEW_PIP_VERSION" ]; then
+        NEXT_MAJOR=$(echo "$NEW_PIP_VERSION" | awk -F. '{print $1"."$2+0.1}')
+        echo "💡 Consider updating pip constraint in setup_base_env.sh from 'pip<25.2' to 'pip<$NEXT_MAJOR'"
+      fi
+    fi
+
+    echo "📝 Applying package updates to requirements.in..."
+    mv requirements.in.relaxed requirements.in
+    echo "✅ Updated requirements.in with latest compatible versions"
+    echo ""
+    echo "🎉 All updates applied successfully!"
+  else
+    echo "❌ TESTS FAILED - Cannot apply updates safely"
+    echo ""
+    echo "🛡️  Keeping current versions to maintain stability"
+
+    if [ "$PACKAGES_TEST_PASSED" = "0" ]; then
+      echo ""
+      echo "📋 Package conflicts detected. Possible reasons:"
+      echo "   • Latest versions have incompatible dependencies"
+      echo "   • Smart constraints are still necessary for stability"
+      echo "   • Try again after package maintainers resolve conflicts"
+    fi
 
     # Restore backup
     mv requirements.in.backup requirements.in
   fi
 
   # Clean up temporary files
-  rm -f requirements.in.relaxed requirements.txt.test update_test.log install_test.log conflict_test.log
+  rm -f requirements.in.relaxed requirements.txt.test update_test.log install_test.log conflict_test.log requirements.in.backup
 
   echo ""
   echo "🔄 UPDATE MODE COMPLETE - Proceeding with installation..."

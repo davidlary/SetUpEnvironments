@@ -156,7 +156,9 @@ cd /path/to/your/environments/directory
 - **Part 3: Conflict Testing** - Tests if old conflicts (like protobuf, pip-tools/pip) have been resolved
 - Creates temporary test environment to verify compatibility
 - Compares current vs. latest versions for toolchain and smart constraint packages
-- Offers to apply updates if no conflicts found (with 10-second timeout)
+- **Evaluates ALL results** - Checks that BOTH toolchain and packages passed all tests
+- **ONLY offers to apply updates if ALL tests pass** (with 10-second timeout) - ensures maximum stability
+- **Refuses to apply updates** if any test fails and explains why
 - Restores original configuration if conflicts are detected
 - Automatically enables adaptive mode for intelligent conflict resolution
 
@@ -207,10 +209,20 @@ cd /path/to/your/environments/directory
   ...
 
 🧪 Testing for conflicts with latest versions...
-✅ No conflicts detected with latest versions!
+✅ No conflicts detected with latest package versions!
 
-💡 Recommendation: Latest versions appear to be compatible.
-   Consider updating smart constraints in requirements.in
+📊 OVERALL UPDATE EVALUATION
+-----------------------------
+  ✅ Toolchain: pip-tools update compatible
+  ✅ Packages: No conflicts with latest versions
+
+✅ ALL TESTS PASSED - Safe to apply updates!
+
+💡 Summary of available updates:
+   • Python: 3.12.7 → 3.12.9
+   • pip-tools: 7.5.1 → 7.6.2
+   • pip: 24.3.1 → 25.0.0
+   • Packages: Update smart constraints to latest compatible versions
 
 ❓ Apply these updates? (will update toolchain and requirements.in)
    Press Ctrl+C to cancel, or wait 10 seconds to apply...
@@ -225,7 +237,38 @@ cd /path/to/your/environments/directory
 💡 Consider updating pip constraint in setup_base_env.sh from 'pip<25.2' to 'pip<25.1'
 📝 Applying package updates to requirements.in...
 ✅ Updated requirements.in with latest compatible versions
+🎉 All updates applied successfully!
+
+🔄 UPDATE MODE COMPLETE - Proceeding with installation...
 ```
+
+**Example: When Tests Fail (Updates NOT Offered)**
+
+If package conflicts are detected, updates will NOT be offered:
+
+```
+🧪 Testing for conflicts with latest versions...
+⚠️  Conflicts detected with latest package versions:
+protobuf 6.33.0 has requirement ..., but you have protobuf 7.0.0
+
+📊 OVERALL UPDATE EVALUATION
+-----------------------------
+  ✅ Toolchain: pip-tools update compatible
+  ❌ Packages: Conflicts or installation failures detected
+
+❌ TESTS FAILED - Cannot apply updates safely
+
+🛡️  Keeping current versions to maintain stability
+
+📋 Package conflicts detected. Possible reasons:
+   • Latest versions have incompatible dependencies
+   • Smart constraints are still necessary for stability
+   • Try again after package maintainers resolve conflicts
+
+🔄 UPDATE MODE COMPLETE - Proceeding with installation...
+```
+
+**Key Point:** Updates are ONLY offered if ALL tests pass. This ensures maximum stability and safety for your environment.
 
 ---
 
