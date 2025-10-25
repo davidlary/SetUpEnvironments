@@ -306,46 +306,56 @@ cd /path/to/your/script/directory
 
 ### Checking for Latest Versions (Update Mode)
 
-The `--update` flag helps maintain an up-to-date environment by checking for toolchain and package updates:
+The `--update` flag provides **comprehensive environment checking** for Python, R, Julia, and system dependencies:
 
 ```bash
 cd /path/to/your/script/directory
 
-# Check for latest versions and test conflict resolution
+# Comprehensive check of ALL environment components
 ./setup_base_env.sh --update
 ```
 
 **What --update mode does:**
 
-**Part 1: Toolchain Version Check**
-1. **Checks pyenv version** and reports if Homebrew has a newer version
-2. **Checks Python version** (latest stable 3.12.x or 3.13.x)
-3. **Checks pip-tools version** and tests compatibility with latest pip
-4. **Tests in isolated environment** to ensure pip-tools works with latest pip
-5. **Reports recommendations** for updating pip constraints if compatible
+**Part 0: Homebrew Update**
+1. **Updates Homebrew** package database (foundation for all checks)
 
-**Part 2: Package Version Check**
+**Part 1: Comprehensive Toolchain Check**
+1. **Checks pyenv** version against Homebrew
+2. **Checks Python** version (latest stable 3.12.x or 3.13.x)
+3. **Checks pip-tools** and tests compatibility with latest pip in isolated environment
+4. **Checks R** version via Homebrew
+5. **Checks Julia** version via Homebrew
+6. **Checks system dependencies** (libgit2, libpq, openssl@3) via Homebrew
+7. **Reports comprehensive summary** of all toolchain components
+
+**Part 2: Python Package Check**
 1. **Backs up** current `requirements.in`
 2. **Temporarily relaxes** smart constraints to test latest versions
-3. **Compares** current versions with latest available versions
-4. **Creates a temporary test environment** to check for conflicts
-5. **Reports findings** with version comparisons
+3. **Compares** current vs. latest for all 8 smart constraint packages
+4. **Creates temporary test environment** to check for conflicts
+5. **Reports findings** with detailed version comparisons
 
 **Part 3: Evaluate Results and Conditionally Apply Updates**
-1. **Evaluates ALL test results** (toolchain compatibility + package conflicts)
-2. **ONLY offers to apply updates if ALL tests pass** - ensures maximum stability
-3. **Installs latest Python** if update available and tests passed
-4. **Updates pip and pip-tools** if compatible versions found and tests passed
-5. **Updates requirements.in** with latest package versions if tests passed
-6. **Offers 10-second timeout** to cancel (Ctrl+C) before applying
-7. **Refuses to apply updates** if any test fails, maintaining stability
-8. **Provides detailed reasoning** when updates cannot be applied safely
+1. **Evaluates ALL test results** (toolchain + packages)
+2. **ONLY offers updates if ALL tests pass** - maximum stability guarantee
+3. **Automatic updates** (if tests passed):
+   - Installs latest Python via pyenv
+   - Updates pip and pip-tools
+   - Updates requirements.in with latest package versions
+4. **Manual updates recommended** (shown after automatic updates):
+   - R: `brew upgrade r`
+   - Julia: `brew upgrade julia`
+   - System deps: `brew upgrade libgit2 libpq openssl@3`
+5. **Offers 10-second timeout** to cancel before applying
+6. **Refuses to apply** if any test fails, maintaining stability
+7. **Provides detailed reasoning** when updates cannot be applied
 
 **When to use:**
-- Monthly or quarterly maintenance to keep environment current
-- After major toolchain or package updates are announced
-- When investigating if old conflicts (like pip-tools/pip) have been resolved
-- Before starting new projects to ensure latest compatible versions
+- Monthly or quarterly comprehensive maintenance
+- After major Python, R, Julia, or Homebrew updates
+- When investigating if old conflicts have been resolved
+- Before starting new projects to ensure all components are current
 
 **Note:** Update mode automatically enables adaptive conflict resolution for intelligent handling of any issues.
 

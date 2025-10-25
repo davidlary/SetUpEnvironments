@@ -51,8 +51,11 @@ for arg in "$@"; do
       echo "  --adaptive         Enable adaptive conflict resolution (slower but smarter)"
       echo "  --no-adaptive      Disable adaptive resolution (faster, default)"
       echo "  --force-reinstall  Force full reinstall by clearing .venv and caches"
-      echo "  --update           Check for latest toolchain (pyenv, Python, pip, pip-tools) and package"
-      echo "                     versions, test if old conflicts are resolved, and offer to apply updates"
+      echo "  --update           Comprehensive check for latest versions of ALL components:"
+      echo "                     • Homebrew, pyenv, Python, pip, pip-tools (automatic updates)"
+      echo "                     • R, Julia, system dependencies (manual brew upgrade)"
+      echo "                     • Python packages with conflict testing"
+      echo "                     ONLY offers updates if ALL tests pass (maximum stability)"
       echo "                     (automatically enables adaptive mode for intelligent resolution)"
       echo ""
       echo "Environment Variables:"
@@ -1005,15 +1008,30 @@ generate_smart_constraints requirements.in
 # 🔄 UPDATE MODE: Check for latest versions and test if old conflicts are resolved
 if [ "$UPDATE_MODE" = "1" ]; then
   echo ""
-  echo "🔄 UPDATE MODE: Checking toolchain and package versions..."
+  echo "🔄 UPDATE MODE: Comprehensive environment check (Python, R, Julia, and system)"
   echo "==============================================================================="
 
   # ============================================================================
-  # PART 1: TOOLCHAIN VERSION CHECKING
+  # PART 0: HOMEBREW UPDATE (Foundation for everything)
   # ============================================================================
   echo ""
-  echo "🔧 TOOLCHAIN VERSION CHECK"
-  echo "-------------------------"
+  echo "🍺 HOMEBREW UPDATE"
+  echo "------------------"
+
+  if command -v brew &>/dev/null; then
+    echo "📦 Updating Homebrew package database..."
+    brew update >/dev/null 2>&1
+    echo "✅ Homebrew updated"
+  else
+    echo "⚠️  Homebrew not found - skipping system package checks"
+  fi
+
+  # ============================================================================
+  # PART 1: COMPREHENSIVE TOOLCHAIN VERSION CHECKING
+  # ============================================================================
+  echo ""
+  echo "🔧 COMPREHENSIVE TOOLCHAIN CHECK"
+  echo "---------------------------------"
 
   # Check pyenv version
   CURRENT_PYENV_VERSION=$(pyenv --version | awk '{print $2}')
@@ -1096,11 +1114,93 @@ if [ "$UPDATE_MODE" = "1" ]; then
     PIP_TOOLS_UPDATE_AVAILABLE=0
   fi
 
+  # Check R version
   echo ""
-  echo "📊 TOOLCHAIN UPDATE SUMMARY:"
-  echo "----------------------------"
+  if command -v R &>/dev/null; then
+    CURRENT_R=$(R --version 2>&1 | head -1 | awk '{print $3}')
+    echo "📊 Current R: $CURRENT_R"
+
+    if command -v brew &>/dev/null; then
+      LATEST_R=$(brew info r | head -1 | awk '{print $3}')
+      if [ "$CURRENT_R" != "$LATEST_R" ]; then
+        echo "  📦 Update available: R $CURRENT_R → $LATEST_R"
+        echo "  💡 To update: brew upgrade r"
+        R_UPDATE_AVAILABLE=1
+      else
+        echo "  ✅ R is up to date"
+        R_UPDATE_AVAILABLE=0
+      fi
+    else
+      echo "  ✅ R installed (version check requires Homebrew)"
+      R_UPDATE_AVAILABLE=0
+    fi
+  else
+    echo "📊 R: Not installed"
+    R_UPDATE_AVAILABLE=0
+  fi
+
+  # Check Julia version
+  echo ""
+  if command -v julia &>/dev/null; then
+    CURRENT_JULIA=$(julia --version | awk '{print $3}')
+    echo "📈 Current Julia: $CURRENT_JULIA"
+
+    if command -v brew &>/dev/null; then
+      LATEST_JULIA=$(brew info julia | head -1 | awk '{print $3}')
+      if [ "$CURRENT_JULIA" != "$LATEST_JULIA" ]; then
+        echo "  📦 Update available: Julia $CURRENT_JULIA → $LATEST_JULIA"
+        echo "  💡 To update: brew upgrade julia"
+        JULIA_UPDATE_AVAILABLE=1
+      else
+        echo "  ✅ Julia is up to date"
+        JULIA_UPDATE_AVAILABLE=0
+      fi
+    else
+      echo "  ✅ Julia installed (version check requires Homebrew)"
+      JULIA_UPDATE_AVAILABLE=0
+    fi
+  else
+    echo "📈 Julia: Not installed"
+    JULIA_UPDATE_AVAILABLE=0
+  fi
+
+  # Check system dependencies
+  echo ""
+  echo "🔧 System Dependencies:"
+  SYSTEM_DEPS_UPDATE_AVAILABLE=0
+
+  if command -v brew &>/dev/null; then
+    for dep in libgit2 libpq openssl@3; do
+      if brew list "$dep" &>/dev/null; then
+        CURRENT_DEP=$(brew list --versions "$dep" | awk '{print $2}')
+        LATEST_DEP=$(brew info "$dep" | head -1 | awk '{print $3}')
+
+        if [ "$CURRENT_DEP" != "$LATEST_DEP" ]; then
+          echo "  📦 $dep: $CURRENT_DEP → $LATEST_DEP (update available)"
+          SYSTEM_DEPS_UPDATE_AVAILABLE=1
+        else
+          echo "  ✅ $dep: $CURRENT_DEP (up to date)"
+        fi
+      else
+        echo "  ⚠️  $dep: Not installed"
+      fi
+    done
+
+    if [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ]; then
+      echo "  💡 To update: brew upgrade libgit2 libpq openssl@3"
+    fi
+  else
+    echo "  ⚠️  Homebrew not available - cannot check system dependencies"
+  fi
+
+  echo ""
+  echo "📊 COMPREHENSIVE TOOLCHAIN SUMMARY:"
+  echo "-----------------------------------"
   [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 Python update available" || echo "  ✅ Python current"
   [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 pip/pip-tools update available" || echo "  ✅ pip/pip-tools current"
+  [ "$R_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 R update available" || echo "  ✅ R current"
+  [ "$JULIA_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 Julia update available" || echo "  ✅ Julia current"
+  [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 System dependencies update available" || echo "  ✅ System dependencies current"
 
   # ============================================================================
   # PART 2: PACKAGE VERSION CHECKING
@@ -1204,15 +1304,27 @@ if [ "$UPDATE_MODE" = "1" ]; then
   if [ "$PACKAGES_TEST_PASSED" = "1" ] && [ "$TOOLCHAIN_SAFE" = "1" ]; then
     echo "✅ ALL TESTS PASSED - Safe to apply updates!"
     echo ""
-    echo "💡 Summary of available updates:"
-    [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "   • Python: $CURRENT_PYTHON → $LATEST_PYTHON"
-    [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip-tools: $CURRENT_PIP_TOOLS → $NEW_PIP_TOOLS_VERSION"
-    [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip: $CURRENT_PIP → $NEW_PIP_VERSION"
-    echo "   • Packages: Update smart constraints to latest compatible versions"
+    echo "💡 Summary of available automatic updates:"
+    [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "   • Python: $CURRENT_PYTHON → $LATEST_PYTHON (automatic)"
+    [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip-tools: $CURRENT_PIP_TOOLS → $NEW_PIP_TOOLS_VERSION (automatic)"
+    [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip: $CURRENT_PIP → $NEW_PIP_VERSION (automatic)"
+    echo "   • Python packages: Update smart constraints to latest compatible versions (automatic)"
+
+    # Show manual updates needed
+    MANUAL_UPDATES_NEEDED=0
+    if [ "$R_UPDATE_AVAILABLE" = "1" ] || [ "$JULIA_UPDATE_AVAILABLE" = "1" ] || [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ]; then
+      MANUAL_UPDATES_NEEDED=1
+      echo ""
+      echo "💡 Additional updates available (require manual upgrade):"
+      [ "$R_UPDATE_AVAILABLE" = "1" ] && echo "   • R: $CURRENT_R → $LATEST_R (run: brew upgrade r)"
+      [ "$JULIA_UPDATE_AVAILABLE" = "1" ] && echo "   • Julia: $CURRENT_JULIA → $LATEST_JULIA (run: brew upgrade julia)"
+      [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ] && echo "   • System dependencies (run: brew upgrade libgit2 libpq openssl@3)"
+    fi
+
     echo ""
 
     # Ask if user wants to apply updates
-    echo "❓ Apply these updates? (will update toolchain and requirements.in)"
+    echo "❓ Apply automatic updates? (Python toolchain and packages)"
     echo "   Press Ctrl+C to cancel, or wait 10 seconds to apply..."
     sleep 10
 
@@ -1245,7 +1357,16 @@ if [ "$UPDATE_MODE" = "1" ]; then
     mv requirements.in.relaxed requirements.in
     echo "✅ Updated requirements.in with latest compatible versions"
     echo ""
-    echo "🎉 All updates applied successfully!"
+    echo "🎉 All automatic updates applied successfully!"
+
+    # Remind about manual updates if needed
+    if [ "$MANUAL_UPDATES_NEEDED" = "1" ]; then
+      echo ""
+      echo "⚠️  Manual updates still needed:"
+      [ "$R_UPDATE_AVAILABLE" = "1" ] && echo "   📊 R: brew upgrade r"
+      [ "$JULIA_UPDATE_AVAILABLE" = "1" ] && echo "   📈 Julia: brew upgrade julia"
+      [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ] && echo "   🔧 System deps: brew upgrade libgit2 libpq openssl@3"
+    fi
   else
     echo "❌ TESTS FAILED - Cannot apply updates safely"
     echo ""

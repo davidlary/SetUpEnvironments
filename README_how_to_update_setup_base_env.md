@@ -151,30 +151,40 @@ cd /path/to/your/environments/directory
 ```
 
 **What this does:**
-- **Part 1: Toolchain Check** - Automatically checks pyenv, Python, pip, and pip-tools for updates
-- **Part 2: Package Check** - Checks all packages for latest versions
-- **Part 3: Conflict Testing** - Tests if old conflicts (like protobuf, pip-tools/pip) have been resolved
-- Creates temporary test environment to verify compatibility
-- Compares current vs. latest versions for toolchain and smart constraint packages
-- **Evaluates ALL results** - Checks that BOTH toolchain and packages passed all tests
-- **ONLY offers to apply updates if ALL tests pass** (with 10-second timeout) - ensures maximum stability
+- **Part 0: Homebrew Update** - Updates Homebrew package database first
+- **Part 1: Comprehensive Toolchain Check** - Checks ALL environment components:
+  - pyenv, Python, pip, pip-tools (automatic updates)
+  - R, Julia (manual brew upgrade recommended)
+  - System dependencies: libgit2, libpq, openssl@3 (manual brew upgrade recommended)
+- **Part 2: Python Package Check** - Checks all Python packages for latest versions
+- **Part 3: Conflict Testing** - Tests if old conflicts have been resolved
+- Creates temporary test environments to verify compatibility
+- Compares current vs. latest versions for all components
+- **Evaluates ALL results** - Checks that EVERYTHING passed all tests
+- **ONLY offers automatic updates if ALL tests pass** - ensures maximum stability
+- **Provides manual update commands** for R, Julia, and system dependencies
 - **Refuses to apply updates** if any test fails and explains why
 - Restores original configuration if conflicts are detected
 - Automatically enables adaptive mode for intelligent conflict resolution
 
 **When to use:**
-- Monthly or quarterly maintenance
+- Monthly or quarterly comprehensive environment maintenance
 - Before starting new projects
-- After major Python, pip, or package updates are announced
-- When you suspect old toolchain or package conflicts might be resolved with newer versions
+- After major Python, R, Julia, Homebrew, or package updates
+- When you suspect old toolchain or package conflicts might be resolved
 
 **Expected output:**
 ```
-🔄 UPDATE MODE: Checking toolchain and package versions...
+🔄 UPDATE MODE: Comprehensive environment check (Python, R, Julia, and system)
 ===============================================================================
 
-🔧 TOOLCHAIN VERSION CHECK
--------------------------
+🍺 HOMEBREW UPDATE
+------------------
+📦 Updating Homebrew package database...
+✅ Homebrew updated
+
+🔧 COMPREHENSIVE TOOLCHAIN CHECK
+---------------------------------
 📦 Current pyenv: 2.3.35
   ✅ pyenv is up to date
 
@@ -190,10 +200,26 @@ cd /path/to/your/environments/directory
   ✅ pip-tools 7.6.2 is compatible with pip 25.0.0
   💡 Consider updating pip constraint from '<25.2' to '<25.1'
 
-📊 TOOLCHAIN UPDATE SUMMARY:
-----------------------------
+📊 Current R: 4.3.2
+  📦 Update available: R 4.3.2 → 4.4.0
+  💡 To update: brew upgrade r
+
+📈 Current Julia: 1.10.0
+  ✅ Julia is up to date
+
+🔧 System Dependencies:
+  📦 libgit2: 1.7.1 → 1.8.0 (update available)
+  ✅ libpq: 16.1 (up to date)
+  ✅ openssl@3: 3.2.0 (up to date)
+  💡 To update: brew upgrade libgit2 libpq openssl@3
+
+📊 COMPREHENSIVE TOOLCHAIN SUMMARY:
+-----------------------------------
   🔄 Python update available
   🔄 pip/pip-tools update available
+  🔄 R update available
+  ✅ Julia current
+  🔄 System dependencies update available
 
 📦 PACKAGE VERSION CHECK
 ------------------------
@@ -218,13 +244,17 @@ cd /path/to/your/environments/directory
 
 ✅ ALL TESTS PASSED - Safe to apply updates!
 
-💡 Summary of available updates:
-   • Python: 3.12.7 → 3.12.9
-   • pip-tools: 7.5.1 → 7.6.2
-   • pip: 24.3.1 → 25.0.0
-   • Packages: Update smart constraints to latest compatible versions
+💡 Summary of available automatic updates:
+   • Python: 3.12.7 → 3.12.9 (automatic)
+   • pip-tools: 7.5.1 → 7.6.2 (automatic)
+   • pip: 24.3.1 → 25.0.0 (automatic)
+   • Python packages: Update smart constraints to latest compatible versions (automatic)
 
-❓ Apply these updates? (will update toolchain and requirements.in)
+💡 Additional updates available (require manual upgrade):
+   • R: 4.3.2 → 4.4.0 (run: brew upgrade r)
+   • System dependencies (run: brew upgrade libgit2 libpq openssl@3)
+
+❓ Apply automatic updates? (Python toolchain and packages)
    Press Ctrl+C to cancel, or wait 10 seconds to apply...
 
 📝 APPLYING UPDATES...
@@ -237,7 +267,12 @@ cd /path/to/your/environments/directory
 💡 Consider updating pip constraint in setup_base_env.sh from 'pip<25.2' to 'pip<25.1'
 📝 Applying package updates to requirements.in...
 ✅ Updated requirements.in with latest compatible versions
-🎉 All updates applied successfully!
+
+🎉 All automatic updates applied successfully!
+
+⚠️  Manual updates still needed:
+   📊 R: brew upgrade r
+   🔧 System deps: brew upgrade libgit2 libpq openssl@3
 
 🔄 UPDATE MODE COMPLETE - Proceeding with installation...
 ```
