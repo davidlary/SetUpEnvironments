@@ -59,7 +59,7 @@ cd ~/your-project-directory
 - **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **111 Python Packages**: ML, visualization, geospatial, web deployment, APIs, testing
+- **69 Direct Python Packages** (+ dependencies): ML, visualization, geospatial, web deployment, APIs, testing, web scraping
 - **13 R Packages**: tidyverse, bibliometrix, reticulate, and more
 - **Julia Environment**: IJulia kernel with automatic setup
 
@@ -408,8 +408,8 @@ yfinance, yahoofinancials, pandas-datareader
 ### 🗺️ Census & Geographic Data (2)
 census, us
 
-### 🌐 Web Automation (3)
-selenium, scholarly, tweepy
+### 🌐 Web Automation & Scraping (4)
+selenium, beautifulsoup4, scholarly, tweepy
 
 ### 🎞️ Scientific Animation (5)
 manim, pyvista, k3d, sympy, p5
@@ -539,7 +539,7 @@ See `Old/README.md` for historical versions:
 
 ---
 
-**Last Updated:** October 16, 2025
+**Last Updated:** October 25, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.12
-**Total Packages:** Python (111), R (13), Julia (IJulia)
+**Total Packages:** Python (69 direct + dependencies), R (13), Julia (IJulia)
