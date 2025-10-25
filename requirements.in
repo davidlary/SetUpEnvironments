@@ -1,0 +1,110 @@
+# 📊 Data Manipulation
+numpy>=1.20.0  # Smart constraint
+pandas
+pyarrow
+duckdb
+dask-geopandas
+
+# 🤖 Machine Learning
+scikit-learn
+xgboost
+lightgbm
+catboost
+h2o
+
+# 📈 Visualization
+matplotlib
+seaborn
+dash-leaflet
+fast-dash
+# jupyter-dash - REMOVED: Obsolete (archived June 2024), use dash>=2.11.0 instead
+plotly==5.15.0  # Smart constraint
+bokeh==3.8.0  # Smart constraint
+altair
+
+# 🌍 Geospatial Tools
+geopandas
+geemap==0.36.4  # Smart constraint
+earthengine-api
+spyndex
+
+# 🧪 Interactive Development
+jupyter
+ipython
+ipywidgets==8.1.7  # Smart constraint
+voila==0.5.11  # Smart constraint
+
+# 🔥 Thermodynamics / Chemistry
+cantera
+
+# 🖼️ Utilities & Video Processing
+Pillow
+embedchain
+moviepy
+imageio
+opencv-python
+ffmpeg-python
+
+# 🎞️ Scientific Animation & Creative Tools
+manim
+pyvista
+k3d
+sympy
+p5
+
+# 🌐 Web Deployment Tools
+streamlit
+dash
+panel==1.8.2  # Smart constraint
+gradio
+flask
+fastapi
+pywebio
+nbconvert
+
+# 🧪 Autograding Tools
+nbgrader
+otter-grader
+nbval
+pytest
+
+# 🤖 API Clients
+openai
+anthropic
+requests
+httpx
+
+# Dependency manager
+pip-tools
+
+# Dynamic conflict resolution constraints
+transformers
+
+# 🌦️ Scientific Data & Weather APIs
+cdsapi
+# ecmwfapi - installed separately from GitHub (not on PyPI)
+netCDF4
+
+# 💰 Financial Data APIs
+yfinance
+yahoofinancials
+pandas-datareader
+
+# 🗺️ Census & Geographic Data
+census
+us
+
+# 🌐 Web Automation & Scraping
+selenium==4.36.0  # Smart constraint
+scholarly
+tweepy
+
+# 📚 Bibliography & Documentation
+pybtex
+pyplantuml
+
+# 🧪 Testing (Legacy Support)
+# nose - REMOVED: Deprecated since 2015, use pytest instead
+
+# 🔤 Natural Language Processing
+nltk  # Natural Language Toolkit

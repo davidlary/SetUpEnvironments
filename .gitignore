@@ -12,6 +12,11 @@ base-env/__pycache__/
 base-env/*.ipynb_checkpoints/
 base-env/requirements.lock.txt
 
+# Venv and caches (local paths)
+.venv/
+.pip-cache/
+.wheels/
+
 # Temporary files
 *.log
 *.tmp
@@ -23,3 +28,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 .Python
+*.ipynb_checkpoints/
+.env
+requirements.lock.txt
