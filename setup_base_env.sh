@@ -10,6 +10,7 @@
 #   ./setup_base_env.sh                    # Fast mode (default)
 #   ./setup_base_env.sh --adaptive         # Enable adaptive conflict resolution
 #   ./setup_base_env.sh --force-reinstall  # Force full reinstall (clears .venv)
+#   ./setup_base_env.sh --update           # Check for latest versions and resolve old conflicts
 #   ./setup_base_env.sh --help             # Show usage information
 #   ENABLE_ADAPTIVE=1 ./setup_base_env.sh  # Enable via environment variable
 #
@@ -21,6 +22,7 @@ IFS=$'\n\t'
 # Parse command line arguments and environment variables
 ENABLE_ADAPTIVE=${ENABLE_ADAPTIVE:-0}
 FORCE_REINSTALL=0
+UPDATE_MODE=0
 
 # Check for flags
 for arg in "$@"; do
@@ -37,13 +39,20 @@ for arg in "$@"; do
       FORCE_REINSTALL=1
       shift
       ;;
+    --update)
+      UPDATE_MODE=1
+      ENABLE_ADAPTIVE=1  # Auto-enable adaptive mode for update
+      shift
+      ;;
     --help|-h)
-      echo "Usage: $0 [--adaptive|--no-adaptive|--force-reinstall]"
+      echo "Usage: $0 [--adaptive|--no-adaptive|--force-reinstall|--update]"
       echo ""
       echo "Options:"
       echo "  --adaptive         Enable adaptive conflict resolution (slower but smarter)"
       echo "  --no-adaptive      Disable adaptive resolution (faster, default)"
       echo "  --force-reinstall  Force full reinstall by clearing .venv and caches"
+      echo "  --update           Check for latest package versions and test if old conflicts are resolved"
+      echo "                     (automatically enables adaptive mode for intelligent resolution)"
       echo ""
       echo "Environment Variables:"
       echo "  ENABLE_ADAPTIVE=1    Enable adaptive resolution"
@@ -56,6 +65,9 @@ done
 
 if [ "$FORCE_REINSTALL" = "1" ]; then
   echo "🧹 Force reinstall mode: ENABLED"
+elif [ "$UPDATE_MODE" = "1" ]; then
+  echo "🔄 Update mode: ENABLED (checking for latest versions and resolving old conflicts)"
+  echo "🧠 Adaptive conflict resolution: AUTO-ENABLED for update mode"
 elif [ "$ENABLE_ADAPTIVE" = "1" ]; then
   echo "🧠 Adaptive conflict resolution: ENABLED"
 else
@@ -988,6 +1000,115 @@ fi
 # Apply intelligent pre-analysis
 echo "🧠 Running intelligent pre-analysis..."
 generate_smart_constraints requirements.in
+
+# 🔄 UPDATE MODE: Check for latest versions and test if old conflicts are resolved
+if [ "$UPDATE_MODE" = "1" ]; then
+  echo ""
+  echo "🔄 UPDATE MODE: Checking for latest package versions and conflict resolution..."
+  echo "==============================================================================="
+
+  # Backup current requirements
+  cp requirements.in requirements.in.backup
+
+  # Create a temporary requirements file with relaxed constraints
+  echo "📝 Creating temporary requirements file with relaxed constraints..."
+  cat requirements.in | sed -E 's/(numpy|ipywidgets|geemap|plotly|panel|bokeh|voila|selenium)==[0-9.]+/\1/g' | sed -E 's/(numpy|ipywidgets|geemap|plotly|panel|bokeh|voila|selenium)>=[0-9.]+/\1/g' > requirements.in.relaxed
+
+  echo "🔍 Testing latest available versions..."
+  if pip-compile requirements.in.relaxed --output-file=requirements.txt.test 2>update_test.log; then
+    echo "✅ Successfully compiled with relaxed constraints"
+    echo ""
+    echo "📊 VERSION COMPARISON:"
+    echo "--------------------"
+
+    # Compare versions for smart constraint packages
+    for pkg in numpy ipywidgets geemap plotly panel bokeh voila selenium; do
+      CURRENT=$(grep -i "^${pkg}==" requirements.in.backup | sed 's/.*==//' | sed 's/[[:space:]].*//' || echo "not pinned")
+      LATEST=$(grep -i "^${pkg}==" requirements.txt.test | sed 's/.*==//' || echo "not found")
+
+      if [ "$CURRENT" != "not pinned" ] && [ "$LATEST" != "not found" ]; then
+        if [ "$CURRENT" != "$LATEST" ]; then
+          echo "  📦 $pkg: $CURRENT → $LATEST (update available)"
+        else
+          echo "  ✅ $pkg: $CURRENT (already latest)"
+        fi
+      fi
+    done
+
+    echo ""
+    echo "🧪 Testing for conflicts with latest versions..."
+
+    # Create temporary venv for testing
+    TEMP_VENV=$(mktemp -d)/test_venv
+    "$PYENV_ROOT/versions/$latest_python/bin/python" -m venv "$TEMP_VENV"
+    source "$TEMP_VENV/bin/activate"
+
+    # Install with relaxed constraints
+    if pip install -q -r requirements.txt.test 2>install_test.log; then
+      if pip check >conflict_test.log 2>&1; then
+        echo "✅ No conflicts detected with latest versions!"
+        echo ""
+        echo "💡 Recommendation: Latest versions appear to be compatible."
+        echo "   Consider updating smart constraints in requirements.in"
+
+        # Deactivate and return to main venv
+        deactivate
+        source .venv/bin/activate
+
+        # Ask if user wants to apply updates
+        echo ""
+        echo "❓ Apply these updates? (will update requirements.in with latest versions)"
+        echo "   Press Ctrl+C to cancel, or wait 10 seconds to apply..."
+        sleep 10
+
+        echo "📝 Applying updates to requirements.in..."
+        mv requirements.in.relaxed requirements.in
+        echo "✅ Updated requirements.in with latest compatible versions"
+      else
+        echo "⚠️  Conflicts detected with latest versions:"
+        head -5 conflict_test.log
+        echo ""
+        echo "🛡️  Keeping current smart constraints to maintain stability"
+
+        # Deactivate and return to main venv
+        deactivate
+        source .venv/bin/activate
+
+        # Restore backup
+        mv requirements.in.backup requirements.in
+      fi
+    else
+      echo "❌ Installation failed with latest versions"
+      echo "🛡️  Keeping current smart constraints to maintain stability"
+
+      # Deactivate and return to main venv
+      deactivate
+      source .venv/bin/activate
+
+      # Restore backup
+      mv requirements.in.backup requirements.in
+    fi
+
+    # Clean up test environment
+    rm -rf "$(dirname "$TEMP_VENV")"
+  else
+    echo "❌ Failed to compile with relaxed constraints"
+    cat update_test.log | head -10
+    echo ""
+    echo "🛡️  Current smart constraints are necessary - keeping them"
+
+    # Restore backup
+    mv requirements.in.backup requirements.in
+  fi
+
+  # Clean up temporary files
+  rm -f requirements.in.relaxed requirements.txt.test update_test.log install_test.log conflict_test.log
+
+  echo ""
+  echo "🔄 UPDATE MODE COMPLETE - Proceeding with installation..."
+  echo "==============================================================================="
+  echo ""
+fi
 
 # 🚀 PERFORMANCE OPTIMIZATION: Smart pre-filtering and wheel pre-compilation
 echo "🎯 Smart pre-filtering packages..."

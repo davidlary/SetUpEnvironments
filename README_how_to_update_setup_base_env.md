@@ -142,6 +142,54 @@ PACKAGES TO ADD/UPDATE:
 [Rest of prompt from above...]
 ```
 
+### Scenario 4: Checking for Latest Versions with Update Mode
+
+**Command:**
+```bash
+cd /path/to/your/environments/directory
+./setup_base_env.sh --update
+```
+
+**What this does:**
+- Automatically checks all packages for latest versions
+- Tests if old conflicts (like protobuf) have been resolved
+- Creates temporary test environment to verify compatibility
+- Compares current vs. latest versions for all smart constraint packages
+- Offers to apply updates if no conflicts found (with 10-second timeout)
+- Restores original configuration if conflicts are detected
+- Automatically enables adaptive mode for intelligent conflict resolution
+
+**When to use:**
+- Monthly or quarterly maintenance
+- Before starting new projects
+- After major package updates are announced
+- When you suspect old conflicts might be resolved with newer versions
+
+**Expected output:**
+```
+🔄 UPDATE MODE: Checking for latest package versions and conflict resolution...
+===============================================================================
+📝 Creating temporary requirements file with relaxed constraints...
+🔍 Testing latest available versions...
+✅ Successfully compiled with relaxed constraints
+
+📊 VERSION COMPARISON:
+--------------------
+  📦 numpy: 1.20.0 → 2.1.0 (update available)
+  ✅ ipywidgets: 8.1.7 (already latest)
+  📦 plotly: 5.15.0 → 5.24.1 (update available)
+  ...
+
+🧪 Testing for conflicts with latest versions...
+✅ No conflicts detected with latest versions!
+
+💡 Recommendation: Latest versions appear to be compatible.
+   Consider updating smart constraints in requirements.in
+
+❓ Apply these updates? (will update requirements.in with latest versions)
+   Press Ctrl+C to cancel, or wait 10 seconds to apply...
+```
+
 ---
 
 ## ⚠️ Important Reminders

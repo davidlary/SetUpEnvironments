@@ -38,6 +38,7 @@ This environment uses a YAML file to securely store API keys separate from your 
 The following keys/credentials are set up:
 
 - `OPENAI_API_KEY`: For OpenAI GPT models
+- `ANTHROPIC_API_KEY`: For Anthropic Claude models
 - `XAI_API_KEY`: For xAI Grok models
 - `GOOGLE_API_KEY`: For Google Gemini models
 - `GITHUB_TOKEN`: For GitHub API access (repos, gists, actions)
@@ -45,8 +46,6 @@ The following keys/credentials are set up:
 - `IPUMS_USERNAME`: IPUMS account username
 - `IPUMS_PASSWORD`: IPUMS account password
 - `ECMWF_URL`, `ECMWF_KEY`, `ECMWF_EMAIL`: For ECMWF API access
-
-**Note:** `ANTHROPIC_API_KEY` is stored in `.env-keys.yml` for reference but is **not** exported to the environment to avoid conflicts with Claude Code CLI. Claude Code uses its own authentication system via the Anthropic Console (`claude login`).
 
 ## ECMWF API Access
 

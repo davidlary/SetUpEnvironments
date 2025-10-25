@@ -39,6 +39,9 @@ cd ~/your-project-directory
 # Force reinstall everything
 ./setup_base_env.sh --force-reinstall
 
+# Check for latest package versions and resolve old conflicts
+./setup_base_env.sh --update
+
 # Show help
 ./setup_base_env.sh --help
 ```
@@ -250,6 +253,8 @@ The script automatically installs:
 Options:
   --adaptive         Enable adaptive conflict resolution
   --force-reinstall  Remove existing environment and reinstall
+  --update           Check for latest package versions and test if old conflicts are resolved
+                     (automatically enables adaptive mode for intelligent resolution)
   --help             Show usage information
 ```
 
@@ -298,6 +303,34 @@ cd /path/to/your/script/directory
 # Force full reinstall
 ./setup_base_env.sh --force-reinstall
 ```
+
+### Checking for Latest Versions (Update Mode)
+
+The `--update` flag helps maintain an up-to-date environment by checking if newer package versions can resolve old conflicts:
+
+```bash
+cd /path/to/your/script/directory
+
+# Check for latest versions and test conflict resolution
+./setup_base_env.sh --update
+```
+
+**What --update mode does:**
+1. **Backs up** current `requirements.in`
+2. **Temporarily relaxes** smart constraints to test latest versions
+3. **Compares** current versions with latest available versions
+4. **Creates a temporary test environment** to check for conflicts
+5. **Reports findings** with version comparisons
+6. **Offers to apply updates** if no conflicts are found (10-second timeout to cancel)
+7. **Restores original** if conflicts are detected, maintaining stability
+
+**When to use:**
+- Monthly or quarterly maintenance to keep environment current
+- After major package updates are announced
+- When investigating if old conflicts have been resolved
+- Before starting new projects to ensure latest compatible versions
+
+**Note:** Update mode automatically enables adaptive conflict resolution for intelligent handling of any issues.
 
 ### Testing the Environment
 
