@@ -1395,6 +1395,24 @@ if [ "$UPDATE_MODE" = "1" ]; then
   echo "📦 Current pip: $CURRENT_PIP (pinned to <25.2 for pip-tools compatibility)"
   echo "📦 Current pip-tools: $CURRENT_PIP_TOOLS"
 
+  # Check for latest pip version (within compatibility constraint)
+  LATEST_PIP=$(pip index versions pip 2>/dev/null | grep '^pip' | head -1 | sed 's/.*(\(.*\))/\1/' || echo "unknown")
+  PIP_UPDATE_AVAILABLE=0
+
+  if [ "$LATEST_PIP" != "unknown" ]; then
+    # Check if pip update is available within our <25.2 constraint
+    LATEST_PIP_MAJOR=$(echo "$LATEST_PIP" | cut -d. -f1)
+    LATEST_PIP_MINOR=$(echo "$LATEST_PIP" | cut -d. -f2)
+
+    if [ "$LATEST_PIP_MAJOR" -lt 25 ] || ([ "$LATEST_PIP_MAJOR" -eq 25 ] && [ "$LATEST_PIP_MINOR" -lt 2 ]); then
+      if [ "$CURRENT_PIP" != "$LATEST_PIP" ]; then
+        echo "  📦 pip update available: $CURRENT_PIP → $LATEST_PIP (within compatibility constraint)"
+        PIP_UPDATE_AVAILABLE=1
+        NEW_PIP_VERSION=$LATEST_PIP
+      fi
+    fi
+  fi
+
   # Check for latest pip-tools and its pip compatibility
   LATEST_PIP_TOOLS=$(pip index versions pip-tools 2>/dev/null | grep 'pip-tools' | head -1 | sed 's/.*(\(.*\))/\1/' || echo "unknown")
 
@@ -1629,8 +1647,8 @@ if [ "$UPDATE_MODE" = "1" ]; then
     echo ""
     echo "💡 Summary of available automatic updates:"
     [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "   • Python: $CURRENT_PYTHON → $LATEST_PYTHON (automatic)"
+    [ "$PIP_UPDATE_AVAILABLE" = "1" ] || [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip: $CURRENT_PIP → $NEW_PIP_VERSION (automatic)"
     [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip-tools: $CURRENT_PIP_TOOLS → $NEW_PIP_TOOLS_VERSION (automatic)"
-    [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip: $CURRENT_PIP → $NEW_PIP_VERSION (automatic)"
     echo "   • Python packages: Update smart constraints to latest compatible versions (automatic)"
 
     # Show manual updates needed
@@ -1663,11 +1681,18 @@ if [ "$UPDATE_MODE" = "1" ]; then
       echo "✅ Python updated to $LATEST_PYTHON"
     fi
 
-    if [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
-      echo "📦 Updating pip and pip-tools..."
-      pip install --upgrade pip pip-tools
-      echo "✅ pip updated to $(pip --version | awk '{print $2}')"
-      echo "✅ pip-tools updated to $(pip show pip-tools | grep Version | awk '{print $2}')"
+    # Update pip and/or pip-tools if needed
+    if [ "$PIP_UPDATE_AVAILABLE" = "1" ] || [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
+      if [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
+        echo "📦 Updating pip and pip-tools..."
+        pip install --upgrade pip pip-tools
+        echo "✅ pip updated to $(pip --version | awk '{print $2}')"
+        echo "✅ pip-tools updated to $(pip show pip-tools | grep Version | awk '{print $2}')"
+      elif [ "$PIP_UPDATE_AVAILABLE" = "1" ]; then
+        echo "📦 Updating pip..."
+        pip install --upgrade "pip<25.2"
+        echo "✅ pip updated to $(pip --version | awk '{print $2}')"
+      fi
 
       # Update pip constraint in setup script if needed
       if [ -n "$NEW_PIP_VERSION" ]; then

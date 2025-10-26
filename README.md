@@ -293,6 +293,10 @@ cd /path/to/your/script/directory
 # Automatic detection and update
 ./setup_base_env.sh
 
+# Check for updates to ALL components (Python, R, Julia, system dependencies)
+# Tests everything and ONLY offers updates if ALL tests pass
+./setup_base_env.sh --update
+
 # Force full reinstall
 ./setup_base_env.sh --force-reinstall
 ```
@@ -538,7 +542,8 @@ See `Old/README.md` for historical versions:
 
 ---
 
-**Last Updated:** October 16, 2025
+**Last Updated:** October 25, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.12
-**Total Packages:** Python (111), R (13), Julia (IJulia)
+**Total Packages:** Python (102 direct + dependencies), R (13), Julia (IJulia)
+**Recent Updates:** gremlinpython re-enabled (aenum conflict resolved), auto-upgrade pip in --update mode

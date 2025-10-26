@@ -446,6 +446,49 @@ Before considering the update complete, verify:
 
 ---
 
+## 🎓 Recent Improvements & Lessons Learned
+
+### October 2025: gremlinpython Conflict Resolution
+
+**Issue Identified:**
+- gremlinpython was excluded due to documented "aenum dependency conflict"
+- Comment stated: "requires aenum<4.0.0 which conflicts with other packages"
+
+**Investigation Results:**
+- Deep research revealed aenum 4.0.0 **does not exist** (latest is 3.1.16)
+- No Python packages in ecosystem require aenum>=4.0.0
+- The documented conflict was based on outdated/false information
+
+**Resolution:**
+- Successfully installed gremlinpython 3.7.4 with no conflicts
+- Tested basic functionality - all working perfectly
+- Package count increased from 101 to 102
+
+**Key Lessons:**
+1. **Periodically Re-test "Known Conflicts"** - Package ecosystems evolve, old conflicts may resolve naturally
+2. **Use Dry-run Testing** - `pip install --dry-run` allows safe conflict checking
+3. **Document with Timestamps** - Add dates to conflict documentation for future reference
+4. **Challenge Assumptions** - Verify documented conflicts are still valid
+
+### October 2025: Auto-upgrade pip in Update Mode
+
+**Enhancement:**
+- Previously, pip only upgraded when pip-tools also needed updating
+- Now pip is checked and upgraded independently in `--update` mode
+- Respects pip<25.2 compatibility constraint for pip-tools
+
+**Implementation:**
+- Added separate pip version checking (lines 1398-1414 in setup_base_env.sh)
+- Modified update apply section to handle pip-only updates (lines 1684-1702)
+- Updated summary reporting to show pip updates independently
+
+**Benefits:**
+- Ensures pip is always current within compatibility constraints
+- Improves security by keeping pip up to date
+- More transparent update reporting
+
+---
+
 ## 📚 Related Documentation
 
 - **Main Setup Guide:** `README_setup_base_env.md`
