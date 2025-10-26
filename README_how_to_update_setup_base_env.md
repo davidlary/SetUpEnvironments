@@ -487,6 +487,71 @@ Before considering the update complete, verify:
 - Improves security by keeping pip up to date
 - More transparent update reporting
 
+### October 2025: Systematic Smart Constraint Testing
+
+**Enhancement:**
+- Added individual testing of all 8 smart constraints in `--update` mode
+- Previously only tested all constraints relaxed together
+- Now tests each constraint individually to identify which are still necessary
+
+**Implementation:**
+- Added PART 2.5 to --update mode (lines 1618-1691 in setup_base_env.sh)
+- Systematically tests each of the 8 smart constraints:
+  1. numpy>=1.20.0
+  2. ipywidgets==8.1.7
+  3. geemap==0.36.4
+  4. plotly==5.15.0
+  5. panel==1.8.2
+  6. bokeh==3.8.0
+  7. voila==0.5.11
+  8. selenium==4.36.0
+- For each constraint:
+  - Creates test requirements with only that constraint relaxed
+  - Compiles with pip-compile
+  - Installs in temporary venv
+  - Runs pip check for conflicts
+  - Reports if constraint can be relaxed or is still necessary
+
+**Output Example:**
+```
+🔍 SYSTEMATIC SMART CONSTRAINT ANALYSIS
+----------------------------------------
+Testing each smart constraint individually to identify which are still necessary...
+
+🧪 Testing numpy without version constraint...
+  ✅ numpy: Constraint can potentially be RELAXED (no conflicts detected)
+
+🧪 Testing ipywidgets without version constraint...
+  ⚠️  ipywidgets: Constraint still NECESSARY (conflicts detected)
+
+[... continues for all 8 constraints ...]
+
+📊 SMART CONSTRAINT ANALYSIS RESULTS:
+-------------------------------------
+✅ Constraints that can potentially be relaxed:
+   • numpy>=1.20.0
+
+⚠️  Constraints that should remain (still prevent conflicts):
+   • ipywidgets==8.1.7
+   • plotly==5.15.0
+   • bokeh==3.8.0
+   • geemap==0.36.4
+   • voila==0.5.11
+   • panel==1.8.2
+   • selenium==4.36.0
+
+💡 Recommendation: Review relaxable constraints and test in your specific use case before removing.
+```
+
+**Benefits:**
+- Identifies false constraints like the gremlinpython issue
+- Provides evidence-based recommendations for constraint relaxation
+- Prevents unnecessary version locks
+- Allows package ecosystem to evolve naturally
+
+**Lesson Learned:**
+Just like gremlinpython had a false conflict, smart constraints may become unnecessary over time as package ecosystems evolve. Systematic testing in --update mode ensures we don't keep outdated constraints.
+
 ---
 
 ## 📚 Related Documentation

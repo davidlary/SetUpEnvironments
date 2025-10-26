@@ -269,6 +269,7 @@ Options:
                      • Homebrew, pyenv, Python, pip, pip-tools (automatic updates)
                      • R, Julia, system dependencies (manual brew upgrade)
                      • Python packages with conflict testing
+                     • Systematic smart constraint analysis (tests each individually)
                      ONLY offers updates if ALL tests pass (maximum stability)
                      (automatically enables adaptive mode for intelligent resolution)
   --help             Show usage information

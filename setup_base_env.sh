@@ -1616,6 +1616,81 @@ if [ "$UPDATE_MODE" = "1" ]; then
   fi
 
   # ============================================================================
+  # PART 2.5: SYSTEMATIC SMART CONSTRAINT TESTING (Individual Testing)
+  # ============================================================================
+  echo ""
+  echo "🔍 SYSTEMATIC SMART CONSTRAINT ANALYSIS"
+  echo "----------------------------------------"
+  echo "Testing each smart constraint individually to identify which are still necessary..."
+  echo ""
+
+  # List of smart constraints to test
+  SMART_CONSTRAINTS=("numpy>=1.20.0" "ipywidgets==8.1.7" "geemap==0.36.4" "plotly==5.15.0" "panel==1.8.2" "bokeh==3.8.0" "voila==0.5.11" "selenium==4.36.0")
+  RELAXABLE_CONSTRAINTS=()
+  NECESSARY_CONSTRAINTS=()
+
+  for constraint in "${SMART_CONSTRAINTS[@]}"; do
+    pkg=$(echo "$constraint" | sed -E 's/[=><!]=.*//')
+
+    echo "🧪 Testing $pkg without version constraint..."
+
+    # Create test requirements with only this constraint relaxed
+    cat requirements.in.backup | sed -E "s/${pkg}[=><!]+[0-9.]+/${pkg}/" > requirements.in.test_single
+
+    # Try compiling with this single constraint relaxed
+    if pip-compile -q requirements.in.test_single --output-file=requirements.txt.test_single 2>/dev/null; then
+      # Create temp venv for quick conflict check
+      TEMP_SINGLE_VENV=$(mktemp -d)/test_single_venv
+      "$PYENV_ROOT/versions/$latest_python/bin/python" -m venv "$TEMP_SINGLE_VENV" 2>/dev/null
+      source "$TEMP_SINGLE_VENV/bin/activate"
+
+      # Install and check for conflicts
+      if pip install -q -r requirements.txt.test_single 2>/dev/null && pip check >/dev/null 2>&1; then
+        echo "  ✅ $pkg: Constraint can potentially be RELAXED (no conflicts detected)"
+        RELAXABLE_CONSTRAINTS+=("$pkg")
+      else
+        echo "  ⚠️  $pkg: Constraint still NECESSARY (conflicts detected)"
+        NECESSARY_CONSTRAINTS+=("$pkg")
+      fi
+
+      deactivate
+      source .venv/bin/activate
+      rm -rf "$(dirname "$TEMP_SINGLE_VENV")"
+    else
+      echo "  ⚠️  $pkg: Constraint still NECESSARY (compilation failed)"
+      NECESSARY_CONSTRAINTS+=("$pkg")
+    fi
+
+    rm -f requirements.in.test_single requirements.txt.test_single
+  done
+
+  echo ""
+  echo "📊 SMART CONSTRAINT ANALYSIS RESULTS:"
+  echo "-------------------------------------"
+
+  if [ ${#RELAXABLE_CONSTRAINTS[@]} -gt 0 ]; then
+    echo "✅ Constraints that can potentially be relaxed:"
+    for pkg in "${RELAXABLE_CONSTRAINTS[@]}"; do
+      CURRENT=$(grep -i "^${pkg}[=><!]" requirements.in.backup | sed 's/[[:space:]].*//')
+      echo "   • $CURRENT"
+    done
+  else
+    echo "  ⚠️  No constraints can be safely relaxed at this time"
+  fi
+
+  if [ ${#NECESSARY_CONSTRAINTS[@]} -gt 0 ]; then
+    echo ""
+    echo "⚠️  Constraints that should remain (still prevent conflicts):"
+    for pkg in "${NECESSARY_CONSTRAINTS[@]}"; do
+      CURRENT=$(grep -i "^${pkg}[=><!]" requirements.in.backup | sed 's/[[:space:]].*//')
+      echo "   • $CURRENT"
+    done
+  fi
+
+  echo ""
+  echo "💡 Recommendation: Review relaxable constraints and test in your specific use case before removing."
+
+  # ============================================================================
   # PART 3: EVALUATE ALL RESULTS AND CONDITIONALLY APPLY UPDATES
   # ============================================================================
   echo ""
