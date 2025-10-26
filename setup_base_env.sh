@@ -255,8 +255,8 @@ if ! command -v brew &>/dev/null; then
 fi
 echo "✅ Homebrew is installed."
 
-# Required system packages
-for pkg in libgit2 libpq openssl@3; do
+# Required system packages (including flock for file locking)
+for pkg in libgit2 libpq openssl@3 flock; do
   if ! brew list "$pkg" &>/dev/null; then
     echo "📦 Installing $pkg..."
     brew install "$pkg"
