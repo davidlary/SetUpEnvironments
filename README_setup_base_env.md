@@ -39,8 +39,9 @@ cd ~/your-project-directory
 # Force reinstall everything
 ./setup_base_env.sh --force-reinstall
 
-# Check for updates to ALL components (Python, R, Julia, system dependencies)
-# Tests everything and ONLY offers updates if ALL tests pass
+# Check for updates to ALL components (Python, R, Julia, system dependencies, packages)
+# Tests everything including systematic smart constraint analysis
+# ONLY offers updates if ALL tests pass
 ./setup_base_env.sh --update
 
 # Show help
