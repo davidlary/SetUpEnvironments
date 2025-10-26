@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.1 (October 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.2 (October 2025) - **Enhanced Production-Grade Edition**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.12 (managed via pyenv)
 
@@ -8,7 +8,9 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, and performance optimizations.
 
-**✨ NEW in v3.1:** 10 state-of-the-art enhancements for failsafe robustness, cross-system portability, and efficiency including concurrent safety, memory monitoring, hash integrity verification, enhanced error diagnostics, CPU architecture detection, comprehensive build tool detection, structured logging, parallel downloads, compressed backups, and atomic operations.
+**✨ NEW in v3.2:** 6 additional robustness enhancements (16 total) bringing adaptive parallel streams (CPU/memory-aware), network resilience with exponential backoff, pip cache corruption detection, package manager lock detection (Linux), enhanced DNS/network diagnostics, and Python version compatibility pre-checks. Plus 11 essential packages added (polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm).
+
+**v3.1 enhancements (10):** Concurrent safety with file locking, memory monitoring, SHA256 hash integrity verification, enhanced error diagnostics with platform-specific fixes, CPU architecture detection (x86_64/ARM64), comprehensive build tool detection, structured logging with timestamps, parallel pip downloads, compressed snapshots, and atomic file operations.
 
 ## Quick Start
 
@@ -66,7 +68,8 @@ cd ~/your-project-directory
 - **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **102 Direct Python Packages** (+ dependencies): ML, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation
+- **113 Direct Python Packages** (+ dependencies): ML, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation
+  - NEW in v3.2: polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm
   - Includes gremlinpython for Gremlin graph queries (aenum conflict resolved Oct 2025)
 - **13 R Packages**: tidyverse, bibliometrix, reticulate, and more
 - **Julia Environment**: IJulia kernel with automatic setup
@@ -739,5 +742,6 @@ See `Old/README.md` for historical versions:
 **Last Updated:** October 25, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.12
-**Total Packages:** Python (102 direct + dependencies), R (13), Julia (IJulia)
+**Total Packages:** Python (113 direct + dependencies), R (13), Julia (IJulia)
+**Version:** 3.2 with 16 robustness enhancements
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025)
