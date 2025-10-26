@@ -1,5 +1,11 @@
 # API Keys and Sensitive Data
 .env-keys.yml
+.env-keys.yml.*
+.env-keys.yml.backup
+.env-keys.yml.bak.*
+.env-keys.yml.test
+.keys-copy.yml
+.keys_setup_completed
 *.key
 *.pem
 .ecmwfapirc
@@ -42,6 +48,18 @@ base-env/*.tmp
 *.tmp
 setup_output*.log
 setup_final.log
+current_packages.txt
+original_packages.txt
+notes.txt
+diagnose_*.py
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Downloaded archives
+sc-claude-code-files-main/
 
 # Python
 __pycache__/
