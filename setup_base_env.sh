@@ -26,15 +26,30 @@ IFS=$'\n\t'
 LOCKFILE="/tmp/setup_base_env.lock"
 LOCKFD=200
 
+# Function to log stage progress to lock file
+log_stage() {
+  local stage="$1"
+  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+  if [ -n "${LOCKFD:-}" ]; then
+    # Append stage info to lock file (PID is on line 1, stages follow)
+    echo "[${timestamp}] ${stage}" >> "$LOCKFILE"
+  fi
+}
+
 # Function to detect and clean up stale lock files
 check_stale_lock() {
   if [ ! -f "$LOCKFILE" ]; then
     return 0  # No lock file, nothing to check
   fi
 
-  # Try to read PID from lock file
+  # Read lock file contents
   local lock_pid
-  lock_pid=$(cat "$LOCKFILE" 2>/dev/null || echo "")
+  local last_stage
+  local last_timestamp
+
+  # First line is PID
+  lock_pid=$(head -n 1 "$LOCKFILE" 2>/dev/null || echo "")
 
   if [ -z "$lock_pid" ]; then
     echo "⚠️  Found empty lock file, removing..."
@@ -42,9 +57,18 @@ check_stale_lock() {
     return 0
   fi
 
+  # Get last stage logged (if any)
+  if [ $(wc -l < "$LOCKFILE" 2>/dev/null || echo "0") -gt 1 ]; then
+    last_stage=$(tail -n 1 "$LOCKFILE" 2>/dev/null || echo "")
+  fi
+
   # Check if process with that PID exists
   if ! ps -p "$lock_pid" >/dev/null 2>&1; then
     echo "⚠️  Found stale lock file (PID $lock_pid no longer running)"
+    if [ -n "$last_stage" ]; then
+      echo "   Last stage: $last_stage"
+      echo "   💡 Process may have crashed/hung at this stage"
+    fi
     echo "🧹 Cleaning up stale lock..."
     rm -f "$LOCKFILE"
     return 0
@@ -62,6 +86,10 @@ check_stale_lock() {
   fi
 
   # Lock is valid - process exists and is running this script
+  # Show current stage if available
+  if [ -n "$last_stage" ]; then
+    echo "ℹ️  Another instance is running: $last_stage"
+  fi
   return 1
 }
 
@@ -123,6 +151,9 @@ trap release_lock EXIT INT TERM
 
 # Acquire lock immediately
 acquire_lock
+
+# Log initial stage
+log_stage "STARTED: Script initialization"
 
 # ============================================================================
 # ENHANCEMENT 7: STRUCTURED LOGGING with Timestamps
@@ -242,6 +273,7 @@ cd "$ENV_DIR"
 # ============================================================================
 # PRE-FLIGHT SAFETY CHECKS (with cross-platform support)
 # ============================================================================
+log_stage "STAGE: Pre-flight safety checks"
 echo ""
 echo "🛡️  PRE-FLIGHT SAFETY CHECKS (ENHANCED)"
 echo "---------------------------------------"
@@ -2473,6 +2505,7 @@ create_needed_packages_list() {
 
 # Create snapshot of current environment before making changes
 create_environment_snapshot
+log_stage "STAGE: Creating environment snapshot"
 
 # Enable error trapping for installation phase
 set -e
@@ -2495,6 +2528,7 @@ if [ -f "requirements.in" ]; then
   log_info "requirements.in integrity check complete"
 fi
 
+log_stage "STAGE: Compiling requirements with pip-compile"
 # 🚀 PERFORMANCE OPTIMIZATION: Wheel pre-compilation and cached installation
 echo "📦 Compiling version-pinned requirements.txt..."
 log_info "Starting pip-compile..."
@@ -2567,6 +2601,7 @@ echo "🔧 Installing packages from wheel cache..."
 pip install --find-links "$WHEEL_CACHE_DIR" --force-reinstall -r requirements.txt --timeout 15 --retries 2 --cache-dir "$PIP_CACHE_DIR"
 
 # Post-installation conflict detection
+log_stage "STAGE: Checking for dependency conflicts"
 echo "🔍 Checking for conflicts..."
 if pip check >conflict_check.log 2>&1; then
   echo "✅ No conflicts detected - installation successful!"
@@ -2646,6 +2681,7 @@ echo "🎯 Package installation completed"
 
 # ============================================================================
 # POST-INSTALLATION HEALTH CHECKS & SUCCESS HANDLING
+log_stage "STAGE: Installing packages"
 # ============================================================================
 
 # Disable error trapping (installation phase complete)
@@ -2726,6 +2762,7 @@ if ! command -v R &>/dev/null; then
   elif [ "$OS_PLATFORM" = "linux" ]; then
     echo "⚠️  R not found. Please install R manually for your Linux distribution:"
     echo "   Ubuntu/Debian: sudo apt-get install r-base"
+log_stage "STAGE: Post-installation verification"
     echo "   RHEL/CentOS: sudo yum install R"
     echo "   Fedora: sudo dnf install R"
     echo ""
@@ -2804,6 +2841,7 @@ echo ""
 echo "⚡ EFFICIENCY ENHANCEMENTS:"
 echo "   8. 📝 Structured Logging - Timestamped logs at $LOG_FILE"
 echo "   9. ⚡ Parallel Downloads - 4 concurrent pip downloads"
+log_stage "STAGE: COMPLETED successfully"
 echo "   10. 📦 Compressed Backups - Fast incremental snapshots with gzip"
 echo ""
 echo "💎 CORE OPTIMIZATIONS (PRESERVED):"
