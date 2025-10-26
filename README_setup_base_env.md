@@ -39,7 +39,8 @@ cd ~/your-project-directory
 # Force reinstall everything
 ./setup_base_env.sh --force-reinstall
 
-# Check for latest package versions and resolve old conflicts
+# Check for updates to ALL components (Python, R, Julia, system dependencies)
+# Tests everything and ONLY offers updates if ALL tests pass
 ./setup_base_env.sh --update
 
 # Show help
@@ -261,11 +262,21 @@ The script automatically installs:
 ./setup_base_env.sh [OPTIONS]
 
 Options:
-  --adaptive         Enable adaptive conflict resolution
-  --force-reinstall  Remove existing environment and reinstall
-  --update           Check for latest package versions and test if old conflicts are resolved
+  --adaptive         Enable adaptive conflict resolution (slower but smarter)
+  --no-adaptive      Disable adaptive resolution (faster, default)
+  --force-reinstall  Force full reinstall by clearing .venv and caches
+  --update           Comprehensive check for latest versions of ALL components:
+                     • Homebrew, pyenv, Python, pip, pip-tools (automatic updates)
+                     • R, Julia, system dependencies (manual brew upgrade)
+                     • Python packages with conflict testing
+                     ONLY offers updates if ALL tests pass (maximum stability)
                      (automatically enables adaptive mode for intelligent resolution)
   --help             Show usage information
+
+Environment Variables:
+  ENABLE_ADAPTIVE=1  Enable adaptive resolution
+
+Default: Fast mode with basic conflict detection
 ```
 
 ### First-Time Setup

@@ -420,9 +420,9 @@ fi
 
 # Configure shell for pyenv (cross-platform)
 # Detect shell configuration file
-if [ -n "$ZSH_VERSION" ] || [ -f "$HOME/.zshrc" ]; then
+if [ -n "${ZSH_VERSION:-}" ] || [ -f "$HOME/.zshrc" ]; then
   SHELL_CONFIG="$HOME/.zshrc"
-elif [ -n "$BASH_VERSION" ] || [ -f "$HOME/.bashrc" ]; then
+elif [ -n "${BASH_VERSION:-}" ] || [ -f "$HOME/.bashrc" ]; then
   SHELL_CONFIG="$HOME/.bashrc"
 else
   # Default to .profile for other shells
