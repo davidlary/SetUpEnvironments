@@ -63,8 +63,8 @@ cd ~/your-project-directory
 - **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **101 Direct Python Packages** (+ dependencies): ML, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation
-  - Note: gremlinpython excluded due to unresolvable aenum dependency conflicts
+- **102 Direct Python Packages** (+ dependencies): ML, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation
+  - Includes gremlinpython for Gremlin graph queries (aenum conflict resolved Oct 2025)
 - **13 R Packages**: tidyverse, bibliometrix, reticulate, and more
 - **Julia Environment**: IJulia kernel with automatic setup
 
@@ -735,5 +735,5 @@ See `Old/README.md` for historical versions:
 **Last Updated:** October 25, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.12
-**Total Packages:** Python (101 direct + dependencies), R (13), Julia (IJulia)
-**Note:** gremlinpython excluded due to unresolvable aenum dependency conflicts
+**Total Packages:** Python (102 direct + dependencies), R (13), Julia (IJulia)
+**Note:** gremlinpython now included (aenum conflict resolved Oct 2025)

@@ -106,7 +106,7 @@ redis  # Redis client (>=4.6.0)
 # 🌐 Graph Databases
 python-arango  # ArangoDB client (>=8.2.0)
 neo4j  # Neo4j client (>=5.28.0)
-# gremlinpython  # Gremlin graph query language (>=3.7.0) - TEMPORARILY DISABLED: aenum dependency conflict (all versions 3.2.3-3.7.4 require aenum<4.0.0 which conflicts with other packages)
+gremlinpython  # Gremlin graph query language (>=3.7.0) - CONFLICT RESOLVED: aenum<4.0.0 requirement is compatible (aenum 4.0+ does not exist, verified Oct 2025)
 
 # 🔐 Security & Authentication
 PyJWT  # JSON Web Token implementation (>=2.10.0)
