@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.2 (October 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.3 (October 2025) - **Enhanced Production-Grade Edition**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.12 (managed via pyenv)
 
@@ -8,7 +8,9 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, and performance optimizations.
 
-**✨ NEW in v3.2:** 6 additional robustness enhancements (16 total) bringing adaptive parallel streams (CPU/memory-aware), network resilience with exponential backoff, pip cache corruption detection, package manager lock detection (Linux), enhanced DNS/network diagnostics, and Python version compatibility pre-checks. Plus 11 essential packages added (polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm).
+**✨ NEW in v3.3:** 5 additional enhancements (21 total) bringing security auditing with pip-audit CVE scanning, extended error context with line numbers and log history, graceful degradation for R/Julia (non-blocking failures), undefined variable detection (set -u), and 12 essential packages added (PyTorch, TensorFlow, Keras, xarray, zarr, h5py, pint, rpy2, langchain, spacy, jupyterlab, papermill) for deep learning, scientific data formats, LLM frameworks, and modern NLP.
+
+**v3.2 refinements (6):** Stale lock detection, stage logging in lock file, smart constraints (8 packages), adaptive conflict resolution (2-tier), early exit optimization, package expansion to 113 (11 added: polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm).
 
 **v3.1 enhancements (10):** Concurrent safety with file locking, memory monitoring, SHA256 hash integrity verification, enhanced error diagnostics with platform-specific fixes, CPU architecture detection (x86_64/ARM64), comprehensive build tool detection, structured logging with timestamps, parallel pip downloads, compressed snapshots, and atomic file operations.
 
@@ -68,8 +70,9 @@ cd ~/your-project-directory
 - **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **113 Direct Python Packages** (+ dependencies): ML, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation
-  - NEW in v3.2: polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm
+- **125 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
+  - NEW in v3.3: torch (PyTorch), tensorflow, keras, xarray, zarr, h5py, pint, rpy2, langchain, spacy, jupyterlab, papermill
+  - v3.2: polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm
   - Includes gremlinpython for Gremlin graph queries (aenum conflict resolved Oct 2025)
 - **13 R Packages**: tidyverse, bibliometrix, reticulate, and more
 - **Julia Environment**: IJulia kernel with automatic setup

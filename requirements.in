@@ -19,6 +19,11 @@ lightgbm  # Gradient boosting
 catboost  # Gradient boosting
 h2o  # Machine learning platform
 
+# 🧠 Deep Learning Frameworks
+torch  # PyTorch - dynamic neural networks (>=2.0.0)
+tensorflow  # TensorFlow - production ML platform (>=2.15.0)
+keras  # High-level neural networks API (>=3.0.0)
+
 # 📈 Visualization & Plotting
 matplotlib  # Basic plotting (>=3.7.0)
 seaborn  # Statistical visualization (>=0.12.0)
@@ -38,9 +43,12 @@ spyndex  # Spectral indices
 
 # 🧪 Interactive Development
 jupyter  # Interactive notebooks
+jupyterlab  # Modern notebook interface (>=4.0.0)
 ipython  # Enhanced Python shell
 ipywidgets==8.1.7  # Smart constraint
 voila==0.5.11  # Smart constraint
+papermill  # Parameterize and execute notebooks (>=2.4.0)
+rpy2  # Python-R bridge for Jupyter (>=3.5.0)
 
 # 🔥 Thermodynamics / Chemistry
 cantera  # Chemical kinetics and thermodynamics
@@ -147,11 +155,16 @@ mkdocs-material  # Material theme for MkDocs (>=9.2.0)
 
 # 🤖 Machine Learning - Advanced
 transformers  # Hugging Face transformers (conflicts with chromadb tokenizers)
+langchain  # LLM application framework (>=0.1.0)
 
 # 🌦️ Scientific Data & Weather APIs
 cdsapi  # Climate Data Store API client for ECMWF data (>=0.5.0)
 # ecmwfapi - installed separately from GitHub (not on PyPI)
 netCDF4  # Scientific data format for satellite/climate data (>=1.6.0)
+xarray  # N-dimensional labeled arrays for scientific data (>=2023.1.0)
+zarr  # Cloud-native chunked array storage (>=2.16.0)
+h5py  # HDF5 binary data format (>=3.9.0)
+pint  # Physical units and conversions (>=0.22.0)
 
 # 💰 Financial Data APIs
 yfinance  # Yahoo Finance data downloader (>=0.2.0)
@@ -176,6 +189,7 @@ pyplantuml  # PlantUML diagram generation (>=0.3.0)
 
 # 🔤 Natural Language Processing
 nltk  # Natural Language Toolkit (>=3.8.0)
+spacy  # Industrial-strength NLP (>=3.7.0)
 
 # Dependency manager
 pip-tools  # Dependency management
