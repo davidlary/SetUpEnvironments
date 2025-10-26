@@ -19,8 +19,18 @@ Docker/
 Old/
 SetUpEnvironments/
 Tools/
-base-env/
 ds-ml-env/
+
+# Base environment (but allow requirements.in)
+base-env/.venv/
+base-env/.pip-cache/
+base-env/.wheels/
+base-env/__pycache__/
+base-env/*.ipynb_checkpoints/
+base-env/requirements.lock.txt
+base-env/requirements.txt
+base-env/*.log
+base-env/*.tmp
 
 # Venv and caches (local paths)
 .venv/

@@ -8,9 +8,9 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, and performance optimizations.
 
-**✨ NEW in v3.3:** 5 additional enhancements (21 total) bringing security auditing with pip-audit CVE scanning, extended error context with line numbers and log history, graceful degradation for R/Julia (non-blocking failures), undefined variable detection (set -u), and 12 essential packages added (PyTorch, TensorFlow, Keras, xarray, zarr, h5py, pint, rpy2, langchain, spacy, jupyterlab, papermill) for deep learning, scientific data formats, LLM frameworks, and modern NLP.
+**✨ NEW in v3.3:** 5 additional enhancements (21 total) bringing security auditing with pip-audit CVE scanning, extended error context with line numbers and log history, graceful degradation for R/Julia (non-blocking failures), undefined variable detection (set -u), and **23 essential packages now included** (fixing README/code inconsistency): Deep Learning (torch, tensorflow, keras), Modern Data (polars, statsmodels, joblib), Scientific Formats (xarray, zarr, h5py), Infrastructure (pint, rpy2, sqlalchemy, psycopg2-binary, boto3), Utilities (tqdm, click, python-dateutil, feedparser, openpyxl), AI/NLP (spacy, langchain, jupyterlab, papermill).
 
-**v3.2 refinements (6):** Stale lock detection, stage logging in lock file, smart constraints (8 packages), adaptive conflict resolution (2-tier), early exit optimization, package expansion to 113 (11 added: polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm).
+**v3.2 refinements (6):** Stale lock detection, stage logging in lock file, smart constraints (8 packages), adaptive conflict resolution (2-tier), early exit optimization.
 
 **v3.1 enhancements (10):** Concurrent safety with file locking, memory monitoring, SHA256 hash integrity verification, enhanced error diagnostics with platform-specific fixes, CPU architecture detection (x86_64/ARM64), comprehensive build tool detection, structured logging with timestamps, parallel pip downloads, compressed snapshots, and atomic file operations.
 
@@ -26,7 +26,7 @@ cd /path/to/your/environments/directory
 # 2. Run installation
 ./setup_base_env.sh
 
-# 3. Activate the environment
+# 3. ⚠️  IMPORTANT: Activate the environment (REQUIRED before use!)
 source base-env/.venv/bin/activate
 
 # 4. Verify it works
@@ -34,6 +34,16 @@ python -c "import pandas, numpy, sklearn; print('✅ Environment ready!')"
 
 # 5. Now you can work from any directory!
 cd ~/your-project-directory
+```
+
+**🚀 Even Easier - Use Helper Scripts:**
+
+```bash
+# After installation, use the convenient activation script from anywhere:
+source ~/Dropbox/Environments/activate_base_env.sh
+
+# Or verify everything works:
+~/Dropbox/Environments/verify_env.sh
 ```
 
 **Additional Options:**
@@ -71,8 +81,13 @@ cd ~/your-project-directory
 
 ### 🔧 Comprehensive Coverage
 - **125 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
-  - NEW in v3.3: torch (PyTorch), tensorflow, keras, xarray, zarr, h5py, pint, rpy2, langchain, spacy, jupyterlab, papermill
-  - v3.2: polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm
+  - **NOW INCLUDED (23 packages fixed)**:
+    - Deep Learning: torch, tensorflow, keras
+    - Modern Data: polars, statsmodels, joblib
+    - Scientific Formats: xarray, zarr, h5py
+    - Infrastructure: pint, rpy2, sqlalchemy, psycopg2-binary, boto3
+    - Utilities: tqdm, click, python-dateutil, feedparser, openpyxl
+    - AI/NLP: spacy, langchain, jupyterlab, papermill
   - Includes gremlinpython for Gremlin graph queries (aenum conflict resolved Oct 2025)
 - **13 R Packages**: tidyverse, bibliometrix, reticulate, and more
 - **Julia Environment**: IJulia kernel with automatic setup
@@ -581,20 +596,23 @@ base-env/
 
 ## Package Categories
 
-### 📊 Data Manipulation (6)
-numpy, pandas, pyarrow, duckdb, dask-geopandas
+### 📊 Data Manipulation (9)
+numpy, pandas, polars, pyarrow, duckdb, dask-geopandas, scipy, statsmodels, joblib
 
 ### 🤖 Machine Learning (5)
 scikit-learn, xgboost, lightgbm, catboost, h2o
 
+### 🔥 Deep Learning (3)
+torch (PyTorch), tensorflow, keras
+
 ### 📈 Visualization (10)
-matplotlib, seaborn, plotly, bokeh, altair, dash, fast-dash, dash-leaflet
+matplotlib, seaborn, plotly, bokeh, altair, dash, fast-dash, dash-leaflet, pyvis
 
 ### 🌍 Geospatial Tools (4)
 geopandas, geemap, earthengine-api, spyndex
 
-### 🧪 Interactive Development (5)
-jupyter, ipython, ipywidgets, voila, nbgrader
+### 🧪 Interactive Development (7)
+jupyter, jupyterlab, ipython, ipywidgets, voila, nbgrader, papermill
 
 ### 🌐 Web Deployment (8)
 streamlit, dash, panel, gradio, flask, fastapi, pywebio, nbconvert
@@ -626,13 +644,67 @@ pybtex, pyplantuml
 ### 🧪 Testing & Autograding (4)
 pytest, nbgrader, otter-grader, nbval
 
-### 🔤 Natural Language Processing (1)
-nltk
+### 🔤 Natural Language Processing (2)
+nltk, spacy
+
+### 🤖 LLM Frameworks (1)
+langchain
+
+### 🗄️ Scientific Data Formats (3)
+xarray, zarr, h5py
+
+### 📐 Units & Physical Quantities (1)
+pint
+
+### 🔗 R Integration (1)
+rpy2
+
+### 🗄️ Database & ORM (4)
+sqlalchemy, psycopg2-binary, duckdb-engine, redis
+
+### ☁️ Cloud Services (1)
+boto3
+
+### 🛠️ Utilities (5)
+tqdm, click, python-dateutil, feedparser, openpyxl
 
 ### 🔥 Scientific Computing (1)
 cantera (thermodynamics/chemistry)
 
 ## Troubleshooting
+
+### ⚠️ "Module not found" or Import Errors
+
+**MOST COMMON ISSUE: Environment not activated**
+
+If you get errors like `ModuleNotFoundError: No module named 'pandas'` or the verification test fails, you likely forgot to activate the environment!
+
+```bash
+# ❌ WRONG - This will fail:
+python -c "import pandas, numpy, sklearn; print('✅ Environment ready!')"
+
+# ✅ CORRECT - Activate first:
+cd ~/Dropbox/Environments/base-env
+source .venv/bin/activate
+python -c "import pandas, numpy, sklearn; print('✅ Environment ready!')"
+
+# ✅ OR use the helper script:
+source ~/Dropbox/Environments/activate_base_env.sh
+python -c "import pandas, numpy, sklearn; print('✅ Environment ready!')"
+
+# ✅ OR run the verification script:
+~/Dropbox/Environments/verify_env.sh
+```
+
+**How to check if environment is activated:**
+- Your prompt should show `(base-env)` or `(.venv)` at the beginning
+- Run `which python` - should show path containing `.venv`
+- Run `echo $VIRTUAL_ENV` - should show the environment path
+
+**To deactivate:**
+```bash
+deactivate
+```
 
 ### Installation Fails
 

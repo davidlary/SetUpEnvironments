@@ -1,16 +1,14 @@
 # 📊 Data Manipulation & Analysis
 numpy>=1.20.0  # Smart constraint
 pandas>=2.0.0  # Data manipulation and analysis (QA requirement)
-polars  # Fast DataFrame library in Rust (>=0.19.0)
+polars  # Fast modern DataFrame library (>=0.20.0)
 pyarrow  # Columnar data format
 duckdb>=0.9.0  # In-process SQL OLAP database (QA requirement)
 dask-geopandas  # Parallel geospatial processing
 scipy  # Scientific computing (>=1.10.0)
-statsmodels  # Statistical models and tests (>=0.14.0)
+statsmodels  # Statistical models (>=0.14.0)
 pydantic>=2.4.0  # Data validation and settings management (QA requirement)
-joblib  # Parallel computing library (>=1.3.0)
-openpyxl  # Excel file support for pandas (>=3.1.0)
-python-dateutil  # Advanced date/time handling (>=2.8.0)
+joblib  # Parallelism and caching (>=1.3.0)
 
 # 🤖 Machine Learning
 scikit-learn  # Machine learning library (>=1.3.0)
@@ -19,10 +17,10 @@ lightgbm  # Gradient boosting
 catboost  # Gradient boosting
 h2o  # Machine learning platform
 
-# 🧠 Deep Learning Frameworks
-torch  # PyTorch - dynamic neural networks (>=2.0.0)
-tensorflow  # TensorFlow - production ML platform (>=2.15.0)
-keras  # High-level neural networks API (>=3.0.0)
+# 🔥 Deep Learning
+torch  # PyTorch deep learning framework (>=2.0.0)
+tensorflow  # TensorFlow deep learning framework (>=2.15.0)
+keras  # High-level deep learning API (>=3.0.0)
 
 # 📈 Visualization & Plotting
 matplotlib  # Basic plotting (>=3.7.0)
@@ -43,12 +41,11 @@ spyndex  # Spectral indices
 
 # 🧪 Interactive Development
 jupyter  # Interactive notebooks
-jupyterlab  # Modern notebook interface (>=4.0.0)
+jupyterlab  # Modern Jupyter notebook interface (>=4.0.0)
 ipython  # Enhanced Python shell
 ipywidgets==8.1.7  # Smart constraint
 voila==0.5.11  # Smart constraint
-papermill  # Parameterize and execute notebooks (>=2.4.0)
-rpy2  # Python-R bridge for Jupyter (>=3.5.0)
+papermill  # Parameterized notebook execution (>=2.4.0)
 
 # 🔥 Thermodynamics / Chemistry
 cantera  # Chemical kinetics and thermodynamics
@@ -96,8 +93,6 @@ anthropic  # Anthropic API client
 requests  # HTTP library (>=2.28.0)
 httpx  # Async HTTP client (>=0.24.0)
 aiohttp  # Async HTTP client/server (>=3.8.0)
-boto3  # AWS SDK for Python (>=1.28.0)
-feedparser  # RSS/Atom feed parser (>=6.0.0)
 
 # 🔍 Content Processing & Text Extraction
 PyMuPDF>=1.23.0  # PDF processing with mathematical notation (QA requirement)
@@ -116,8 +111,8 @@ rdflib  # RDF library (>=7.0.0)
 
 # 🗄️ Database & Caching
 sqlalchemy  # SQL toolkit and ORM (>=2.0.0)
-duckdb-engine  # DuckDB SQLAlchemy engine (>=0.17.0)
 psycopg2-binary  # PostgreSQL adapter (>=2.9.0)
+duckdb-engine  # DuckDB SQLAlchemy engine (>=0.17.0)
 redis  # Redis client (>=4.6.0)
 
 # 🌐 Graph Databases
@@ -132,8 +127,16 @@ PyJWT  # JSON Web Token implementation (>=2.10.0)
 PyYAML  # YAML parser (>=6.0)
 python-dotenv  # Environment variable loader (>=1.0.0)
 loguru  # Advanced logging (>=0.7.0)
-click  # CLI building framework (>=8.1.0)
+
+# ☁️ Cloud Services
+boto3  # AWS SDK for Python (>=1.34.0)
+
+# 🛠️ Utilities
 tqdm  # Progress bars (>=4.66.0)
+click  # Command-line interface framework (>=8.1.0)
+python-dateutil  # Date parsing and manipulation (>=2.8.0)
+feedparser  # RSS and Atom feeds (>=6.0.0)
+openpyxl  # Excel file reading/writing (>=3.1.0)
 
 # 📊 System Monitoring
 psutil>=5.9.0  # System and process utilities (QA requirement)
@@ -155,16 +158,22 @@ mkdocs-material  # Material theme for MkDocs (>=9.2.0)
 
 # 🤖 Machine Learning - Advanced
 transformers  # Hugging Face transformers (conflicts with chromadb tokenizers)
-langchain  # LLM application framework (>=0.1.0)
 
 # 🌦️ Scientific Data & Weather APIs
 cdsapi  # Climate Data Store API client for ECMWF data (>=0.5.0)
 # ecmwfapi - installed separately from GitHub (not on PyPI)
 netCDF4  # Scientific data format for satellite/climate data (>=1.6.0)
-xarray  # N-dimensional labeled arrays for scientific data (>=2023.1.0)
-zarr  # Cloud-native chunked array storage (>=2.16.0)
-h5py  # HDF5 binary data format (>=3.9.0)
-pint  # Physical units and conversions (>=0.22.0)
+
+# 🗄️ Scientific Data Formats
+xarray  # Multi-dimensional labeled arrays (>=2023.1.0)
+zarr  # Chunked, compressed array storage (>=2.16.0)
+h5py  # HDF5 binary data format (>=3.10.0)
+
+# 📐 Units & Physical Quantities
+pint  # Physical quantities with units (>=0.23.0)
+
+# 🔗 R Integration
+rpy2  # Use R from Python (>=3.5.0)
 
 # 💰 Financial Data APIs
 yfinance  # Yahoo Finance data downloader (>=0.2.0)
@@ -190,6 +199,9 @@ pyplantuml  # PlantUML diagram generation (>=0.3.0)
 # 🔤 Natural Language Processing
 nltk  # Natural Language Toolkit (>=3.8.0)
 spacy  # Industrial-strength NLP (>=3.7.0)
+
+# 🤖 LLM Frameworks
+langchain  # LLM application framework (>=0.1.0)
 
 # Dependency manager
 pip-tools  # Dependency management
