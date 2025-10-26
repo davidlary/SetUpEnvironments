@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.2 (October 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.3 (October 2025) - **Enhanced Production-Grade Edition**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.12 (managed via pyenv)
 
@@ -8,7 +8,11 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, and performance optimizations.
 
-**✨ NEW in v3.2:** 6 additional robustness enhancements (16 total) bringing adaptive parallel streams (CPU/memory-aware), network resilience with exponential backoff, pip cache corruption detection, package manager lock detection (Linux), enhanced DNS/network diagnostics, and Python version compatibility pre-checks. Plus 11 essential packages added bringing total to 113 direct packages.
+**✨ NEW in v3.3:** 5 additional enhancements (21 total) bringing security auditing with pip-audit CVE scanning, extended error context with line numbers and log history, graceful degradation for R/Julia (non-blocking failures), undefined variable detection (set -u), and 12 essential packages added (PyTorch, TensorFlow, Keras, xarray, zarr, h5py, pint, rpy2, langchain, spacy, jupyterlab, papermill) for deep learning, scientific data formats, LLM frameworks, and modern NLP.
+
+**v3.2 refinements (6):** Stale lock detection, stage logging in lock file, smart constraints (8 packages), adaptive conflict resolution (2-tier), early exit optimization, package expansion to 113 (11 added: polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm).
+
+**v3.1 enhancements (10):** Concurrent safety with file locking, memory monitoring, SHA256 hash integrity verification, enhanced error diagnostics with platform-specific fixes, CPU architecture detection (x86_64/ARM64), comprehensive build tool detection, structured logging with timestamps, parallel pip downloads, compressed snapshots, and atomic file operations.
 
 ## Quick Start
 
@@ -30,10 +34,6 @@ python -c "import pandas, numpy, sklearn; print('✅ Environment ready!')"
 
 # 5. Now you can work from any directory!
 cd ~/your-project-directory
-
-# 6. To check for updates later (monthly recommended)
-cd /path/to/your/environments/directory
-./setup_base_env.sh --update
 ```
 
 **Additional Options:**
@@ -42,13 +42,13 @@ cd /path/to/your/environments/directory
 # With adaptive conflict resolution (if needed)
 ./setup_base_env.sh --adaptive
 
+# Force reinstall everything
+./setup_base_env.sh --force-reinstall
+
 # Check for updates to ALL components (Python, R, Julia, system dependencies, packages)
 # Tests everything including systematic smart constraint analysis
 # ONLY offers updates if ALL tests pass
 ./setup_base_env.sh --update
-
-# Force reinstall everything
-./setup_base_env.sh --force-reinstall
 
 # Show help
 ./setup_base_env.sh --help
@@ -56,47 +56,36 @@ cd /path/to/your/environments/directory
 
 ## Key Features
 
-### ✨ NEW: 16 Total State-of-the-Art Enhancements (v3.1: 10, v3.2: 6)
-
-**v3.2 Enhancements (6 new):**
-1. **Adaptive Parallel Streams** - CPU/memory-aware parallelism with conservative limits (max 8, requires 4GB+ RAM)
-2. **Network Resilience** - Exponential backoff retry (3 attempts) with PyPI mirror fallback
-3. **Pip Cache Corruption Detection** - Automatic cleanup of incomplete downloads and bloated caches
-4. **Package Manager Lock Detection** - Linux apt/yum/dnf lock detection prevents mysterious failures
-5. **Enhanced DNS/Network Diagnostics** - Multi-layer connectivity checks (DNS, HTTPS, speed test)
-6. **Python Version Compatibility Pre-check** - Early warnings for version mismatches and incompatibilities
-
-**v3.1 Enhancements (10):**
-7. **Concurrent Safety** - File locking prevents catastrophic simultaneous runs
-8. **Memory Monitoring** - RAM checks prevent OOM kills during large installations
-9. **Hash Integrity Verification** - SHA256 checksums detect file corruption
-10. **Atomic File Operations** - Prevent partial writes and race conditions
-11. **Enhanced Error Diagnostics** - Platform-specific actionable fixes (Xcode, build tools, SSL)
-12. **CPU Architecture Detection** - ARM/x86_64 optimization for Apple Silicon & Intel
-13. **Comprehensive Build Tool Detection** - Better Linux support with detailed missing library detection
-14. **Structured Logging** - Timestamped logs with levels (DEBUG, INFO, WARN, ERROR)
-15. **Parallel Pip Downloads** - 4 concurrent downloads (pip 20.3+)
-16. **Compressed Incremental Backups** - 70-80% smaller snapshots with gzip, 2-3x faster
-
 ### 🎯 Smart Package Management
 - **Smart Constraints System**: Pre-defined version pins for 8 historically problematic packages
 - **Hybrid Conflict Resolution**: Two-tier conflict resolution strategy
 - **Backtracking Prevention**: Optimized constraints reduce pip solver time
 - **Obsolescence Management**: Automatic removal of deprecated packages (jupyter-dash, nose)
-- **Systematic Constraint Testing**: Individual testing of each constraint to identify false conflicts
 
 ### ⚡ Performance Optimizations
 - **Early Exit Detection**: Skip reinstallation if environment already exists
 - **Smart Filtering**: Only process changed constraints
 - **Wheel Pre-compilation**: Cache compiled wheels for faster reinstalls
 - **Pip Caching**: Leverage pip's built-in download cache
-- **Parallel Downloads**: 4 concurrent pip downloads for faster installation
+- **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **113 Direct Python Packages** (+ dependencies): ML, visualization, geospatial, web deployment, APIs, testing, utilities
-  - NEW in v3.2: polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm
+- **125 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
+  - NEW in v3.3: torch (PyTorch), tensorflow, keras, xarray, zarr, h5py, pint, rpy2, langchain, spacy, jupyterlab, papermill
+  - v3.2: polars, statsmodels, joblib, sqlalchemy, psycopg2-binary, boto3, feedparser, openpyxl, python-dateutil, click, tqdm
+  - Includes gremlinpython for Gremlin graph queries (aenum conflict resolved Oct 2025)
 - **13 R Packages**: tidyverse, bibliometrix, reticulate, and more
 - **Julia Environment**: IJulia kernel with automatic setup
+
+### 🛡️ Production-Grade Safety Features
+- **Pre-flight Checks**: Validates disk space (10GB minimum), internet connectivity, write permissions, and system dependencies before installation
+- **Operating System Detection**: Automatically detects macOS/Linux and adjusts commands accordingly
+- **Cross-Platform Compatibility**: Full support for macOS and Linux (Ubuntu, RHEL, Fedora, etc.)
+- **Environment Snapshots**: Automatic backup of working environment before making changes
+- **Automatic Rollback**: Restores previous state if installation fails
+- **Post-installation Health Checks**: Validates Python interpreter, critical packages (numpy, pandas, matplotlib, jupyter), and Jupyter kernels
+- **Installation Metadata**: Tracks installation history, timestamps, package counts, conflict status, and OS information in `.env_metadata.json`
+- **Snapshot Management**: Automatically cleans up old snapshots (keeps 2 most recent) and removes snapshot after successful installation
 
 ### 🔑 API Key Management
 Automatically configures environment variables for:
@@ -282,9 +271,22 @@ The script automatically installs:
 ./setup_base_env.sh [OPTIONS]
 
 Options:
-  --adaptive         Enable adaptive conflict resolution
-  --force-reinstall  Remove existing environment and reinstall
+  --adaptive         Enable adaptive conflict resolution (slower but smarter)
+  --no-adaptive      Disable adaptive resolution (faster, default)
+  --force-reinstall  Force full reinstall by clearing .venv and caches
+  --update           Comprehensive check for latest versions of ALL components:
+                     • Homebrew, pyenv, Python, pip, pip-tools (automatic updates)
+                     • R, Julia, system dependencies (manual brew upgrade)
+                     • Python packages with conflict testing
+                     • Systematic smart constraint analysis (tests each individually)
+                     ONLY offers updates if ALL tests pass (maximum stability)
+                     (automatically enables adaptive mode for intelligent resolution)
   --help             Show usage information
+
+Environment Variables:
+  ENABLE_ADAPTIVE=1  Enable adaptive resolution
+
+Default: Fast mode with basic conflict detection
 ```
 
 ### First-Time Setup
@@ -329,13 +331,64 @@ cd /path/to/your/script/directory
 # Automatic detection and update
 ./setup_base_env.sh
 
-# Check for updates to ALL components (Python, R, Julia, system dependencies)
-# Tests everything and ONLY offers updates if ALL tests pass
-./setup_base_env.sh --update
-
 # Force full reinstall
 ./setup_base_env.sh --force-reinstall
 ```
+
+### Checking for Latest Versions (Update Mode)
+
+The `--update` flag provides **comprehensive environment checking** for Python, R, Julia, and system dependencies:
+
+```bash
+cd /path/to/your/script/directory
+
+# Comprehensive check of ALL environment components
+./setup_base_env.sh --update
+```
+
+**What --update mode does:**
+
+**Part 0: Homebrew Update**
+1. **Updates Homebrew** package database (foundation for all checks)
+
+**Part 1: Comprehensive Toolchain Check**
+1. **Checks pyenv** version against Homebrew
+2. **Checks Python** version (latest stable 3.12.x or 3.13.x)
+3. **Checks pip-tools** and tests compatibility with latest pip in isolated environment
+4. **Checks R** version via Homebrew
+5. **Checks Julia** version via Homebrew
+6. **Checks system dependencies** (libgit2, libpq, openssl@3) via Homebrew
+7. **Reports comprehensive summary** of all toolchain components
+
+**Part 2: Python Package Check**
+1. **Backs up** current `requirements.in`
+2. **Temporarily relaxes** smart constraints to test latest versions
+3. **Compares** current vs. latest for all 8 smart constraint packages
+4. **Creates temporary test environment** to check for conflicts
+5. **Reports findings** with detailed version comparisons
+
+**Part 3: Evaluate Results and Conditionally Apply Updates**
+1. **Evaluates ALL test results** (toolchain + packages)
+2. **ONLY offers updates if ALL tests pass** - maximum stability guarantee
+3. **Automatic updates** (if tests passed):
+   - Installs latest Python via pyenv
+   - Updates pip and pip-tools
+   - Updates requirements.in with latest package versions
+4. **Manual updates recommended** (shown after automatic updates):
+   - R: `brew upgrade r`
+   - Julia: `brew upgrade julia`
+   - System deps: `brew upgrade libgit2 libpq openssl@3`
+5. **Offers 10-second timeout** to cancel before applying
+6. **Refuses to apply** if any test fails, maintaining stability
+7. **Provides detailed reasoning** when updates cannot be applied
+
+**When to use:**
+- Monthly or quarterly comprehensive maintenance
+- After major Python, R, Julia, or Homebrew updates
+- When investigating if old conflicts have been resolved
+- Before starting new projects to ensure all components are current
+
+**Note:** Update mode automatically enables adaptive conflict resolution for intelligent handling of any issues.
 
 ### Testing the Environment
 
@@ -352,25 +405,136 @@ jupyter kernelspec list
 python -c "from rpy2.robjects import r; print('✅ R integration works')"
 ```
 
+## Production-Grade Safety Features
+
+The setup script includes multiple layers of protection to ensure reliable, fail-safe installations:
+
+### 🛡️ Pre-flight Checks
+
+Before making any changes, the script validates:
+
+1. **Operating System Detection**: Detects macOS or Linux, identifies architecture (x86_64, arm64, etc.)
+2. **Platform Compatibility**: Ensures OS is supported (macOS, Linux); warns if running on Windows
+3. **Disk Space**: Ensures at least 10GB of free space is available (cross-platform df command handling)
+4. **Internet Connectivity**: Tests connection to PyPI and Google DNS
+5. **Write Permissions**: Verifies script can write to the environment directory
+6. **System Dependencies**: Checks for git, curl, and platform-specific package managers
+7. **Build Tools**: On Linux, checks for gcc and make (needed for compiling Python packages)
+8. **Metadata Loading**: Reads existing installation history if available
+
+If any critical check fails, the script exits immediately before making changes.
+
+**Cross-Platform Support:**
+- **macOS**: Uses Homebrew for system packages, df -g for disk space
+- **Linux**: Supports apt (Ubuntu/Debian), yum (RHEL/CentOS), dnf (Fedora), uses df -BG for disk space
+- **Shell Detection**: Auto-detects zsh, bash, or sh and configures appropriately
+- **Platform-Specific Commands**: Automatically adjusts sed syntax and other commands based on OS
+
+### 📸 Environment Snapshots
+
+**Automatic Backup Creation:**
+- Before making any changes, the script creates a complete backup of your current `.venv` directory
+- Snapshots are stored as `.venv.snapshot_YYYYMMDD_HHMMSS/`
+- Each snapshot includes metadata:
+  - Timestamp of snapshot creation
+  - Python and pip versions
+  - Package count
+  - Copy of `requirements.txt` and `requirements.lock.txt`
+
+**Automatic Cleanup:**
+- Keeps only the 2 most recent snapshots to save disk space
+- Removes snapshot after successful installation (no longer needed)
+- Older snapshots are automatically pruned
+
+### 🔄 Automatic Rollback
+
+**Error Detection:**
+- Error trapping is enabled during the installation phase (`set -e` and `trap`)
+- Any command failure triggers automatic rollback
+- Failures during pip-compile, wheel building, or package installation are caught
+
+**Rollback Process:**
+- Removes the failed `.venv` directory
+- Restores the most recent snapshot
+- Shows metadata about the restored environment
+- Exits with clear error message
+
+**Manual Rollback:**
+If you need to manually restore a snapshot:
+```bash
+cd base-env
+rm -rf .venv
+mv .venv.snapshot_YYYYMMDD_HHMMSS .venv
+source .venv/bin/activate
+```
+
+### 🏥 Post-Installation Health Checks
+
+After successful package installation, the script validates:
+
+1. **Python Interpreter**: Verifies Python can run and display version
+2. **Critical Packages**: Tests imports of numpy, pandas, matplotlib, jupyter, ipykernel
+3. **Jupyter Kernel**: Checks if Python3 kernel is available
+4. **Environment Size**: Reports disk space used by environment
+
+If critical checks fail, you're prompted to rollback or continue at your own risk.
+
+### 📝 Installation Metadata
+
+The script maintains a `.env_metadata.json` file that tracks:
+
+```json
+{
+  "last_successful_install": "2025-10-25 14:30:00",
+  "os_platform": "macos",
+  "os_type": "Darwin",
+  "os_arch": "arm64",
+  "python_version": "3.12.7",
+  "pip_version": "24.3.1",
+  "packages_count": 450,
+  "has_conflicts": false,
+  "installation_mode": "adaptive"
+}
+```
+
+**Use Cases:**
+- Track when environment was last successfully updated
+- Identify which mode was used for installation
+- Monitor package count growth over time
+- Quick conflict status check
+
+**Location:** `base-env/.env_metadata.json` (excluded from git via `.gitignore`)
+
+### 🧹 Excluded from Git
+
+The following safety-related files are automatically excluded from version control:
+
+```
+.venv.snapshot_*/          # Snapshot backups
+.env_metadata.json         # Installation metadata
+*.log                      # Log files
+```
+
+This prevents bloating the repository while maintaining local safety features.
+
 ## Package Management Strategy
 
-### Smart Constraints (10 packages)
+### Smart Constraints (8 packages)
 
 These packages have historically caused dependency conflicts. We pin specific versions:
 
 | Package | Version | Reason |
 |---------|---------|--------|
-| `bqplot` | 0.12.45 | Latest stable |
-| `ipywidgets` | 8.1.7 | Latest 8.1.x series |
-| `jupyterlab` | 4.4.9 | Latest stable |
-| `geemap` | 0.36.4 | Latest stable |
-| `plotly` | 5.15.0 | v6 has breaking changes |
-| `panel` | 1.8.2 | Latest with bokeh 3.x support |
-| `bokeh` | 3.8.0 | Latest 3.x series |
-| `voila` | 0.5.11 | Latest patch version |
-| `selenium` | 4.36.0 | Latest stable |
+| `numpy` | >=1.20.0 | Minimum version for core scientific computing compatibility |
+| `ipywidgets` | 8.1.7 | Jupyter widget compatibility with notebook ecosystem |
+| `geemap` | 0.36.4 | Pinned for Google Earth Engine API compatibility |
+| `plotly` | 5.15.0 | v6+ has breaking changes - pinned to stable 5.x |
+| `panel` | 1.8.2 | Dashboard framework pinned for stability |
+| `bokeh` | 3.8.0 | Historical stability issues with newer versions |
+| `voila` | 0.5.11 | Web app conversion stability with ipywidgets==8.1.7 |
+| `selenium` | 4.36.0 | Browser automation - latest stable version |
 
-**Removed**: `jupyter-dash` (obsolete), `nose` (deprecated since 2015)
+**Removed**: `jupyter-dash` (obsolete), `nose` (deprecated since 2015), `bqplot` and `jupyterlab` (no longer require pinning)
 
 ### Special Package Installation
 
@@ -447,8 +611,8 @@ yfinance, yahoofinancials, pandas-datareader
 ### 🗺️ Census & Geographic Data (2)
 census, us
 
-### 🌐 Web Automation (3)
-selenium, scholarly, tweepy
+### 🌐 Web Automation & Scraping (4)
+selenium, beautifulsoup4, scholarly, tweepy
 
 ### 🎞️ Scientific Animation (5)
 manim, pyvista, k3d, sympy, p5
@@ -579,10 +743,8 @@ See `Old/README.md` for historical versions:
 ---
 
 **Last Updated:** October 25, 2025
-**Version:** 3.1 - Enhanced Production-Grade Edition
 **Maintained by:** David Lary
 **Python Version:** 3.12
-**Total Packages:** Python (109 direct + dependencies), R (13), Julia (IJulia)
-**Recent Updates:**
-- **v3.2:** 10 state-of-the-art enhancements (concurrent safety, memory monitoring, hash verification, enhanced diagnostics, CPU architecture detection, build tool detection, structured logging, parallel downloads, compressed backups, atomic operations)
-- v3.0: gremlinpython re-enabled (aenum conflict resolved), auto-upgrade pip in --update mode, systematic smart constraint testing
+**Total Packages:** Python (113 direct + dependencies), R (13), Julia (IJulia)
+**Version:** 3.2 with 16 robustness enhancements
+**Note:** gremlinpython now included (aenum conflict resolved Oct 2025)
