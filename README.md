@@ -28,6 +28,10 @@ python -c "import pandas, numpy, sklearn; print('✅ Environment ready!')"
 
 # 5. Now you can work from any directory!
 cd ~/your-project-directory
+
+# 6. To check for updates later (monthly recommended)
+cd /path/to/your/environments/directory
+./setup_base_env.sh --update
 ```
 
 **Additional Options:**
