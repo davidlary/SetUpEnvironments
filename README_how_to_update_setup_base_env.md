@@ -636,6 +636,6 @@ Just like gremlinpython had a false conflict, smart constraints may become unnec
 ---
 
 **Last Updated:** October 25, 2025
-**Version:** 3.1 - Enhanced Production-Grade Edition
+**Version:** 3.3 - Enhanced Production-Grade Edition
 **Maintained by:** David Lary
-**Environment Version:** 3.1
+**Environment Version:** 3.3

@@ -745,6 +745,6 @@ See `Old/README.md` for historical versions:
 **Last Updated:** October 25, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.12
-**Total Packages:** Python (113 direct + dependencies), R (13), Julia (IJulia)
-**Version:** 3.2 with 16 robustness enhancements
+**Total Packages:** Python (125 direct + dependencies), R (13), Julia (IJulia)
+**Version:** 3.3 with 21 enhancements
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025)
