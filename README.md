@@ -36,6 +36,11 @@ cd ~/your-project-directory
 # With adaptive conflict resolution (if needed)
 ./setup_base_env.sh --adaptive
 
+# Check for updates to ALL components (Python, R, Julia, system dependencies, packages)
+# Tests everything including systematic smart constraint analysis
+# ONLY offers updates if ALL tests pass
+./setup_base_env.sh --update
+
 # Force reinstall everything
 ./setup_base_env.sh --force-reinstall
 
