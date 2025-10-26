@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.1 (October 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.2 (October 2025) - **Enhanced Production-Grade Edition**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.12 (managed via pyenv)
 
@@ -8,7 +8,7 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, and performance optimizations.
 
-**✨ NEW in v3.1:** 10 state-of-the-art enhancements for failsafe robustness, cross-system portability, and efficiency including concurrent safety, memory monitoring, hash integrity verification, and enhanced error diagnostics.
+**✨ NEW in v3.2:** 10 state-of-the-art enhancements for failsafe robustness, cross-system portability, and efficiency including concurrent safety, memory monitoring, hash integrity verification, and enhanced error diagnostics.
 
 ## Quick Start
 
@@ -56,7 +56,7 @@ cd /path/to/your/environments/directory
 
 ## Key Features
 
-### ✨ NEW: 10 State-of-the-Art Enhancements (v3.1)
+### ✨ NEW: 10 State-of-the-Art Enhancements (v3.2)
 
 **🛡️ Robustness Enhancements:**
 1. **Concurrent Safety** - File locking prevents catastrophic simultaneous runs
@@ -577,7 +577,7 @@ See `Old/README.md` for historical versions:
 **Version:** 3.1 - Enhanced Production-Grade Edition
 **Maintained by:** David Lary
 **Python Version:** 3.12
-**Total Packages:** Python (102 direct + dependencies), R (13), Julia (IJulia)
+**Total Packages:** Python (109 direct + dependencies), R (13), Julia (IJulia)
 **Recent Updates:**
-- **v3.1:** 10 state-of-the-art enhancements (concurrent safety, memory monitoring, hash verification, enhanced diagnostics, CPU architecture detection, build tool detection, structured logging, parallel downloads, compressed backups, atomic operations)
+- **v3.2:** 10 state-of-the-art enhancements (concurrent safety, memory monitoring, hash verification, enhanced diagnostics, CPU architecture detection, build tool detection, structured logging, parallel downloads, compressed backups, atomic operations)
 - v3.0: gremlinpython re-enabled (aenum conflict resolved), auto-upgrade pip in --update mode, systematic smart constraint testing

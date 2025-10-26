@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.1 (October 2025)
+# Version: 3.2 (October 2025)
 #
 # Comprehensive data science environment with Python 3.12, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -86,7 +86,7 @@ log_warn() { log "WARN" "$@"; }
 log_error() { log "ERROR" "$@"; }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.1 - Enhanced"
+log_info "Base Environment Setup Script v3.2 - Enhanced"
 log_info "Log file: $LOG_FILE"
 log_info "==================================================================="
 
@@ -300,24 +300,131 @@ else
   echo "✅ Sufficient memory available: ${FREE_MEM_GB}GB"
 fi
 
-# Check 2: Internet Connectivity
-echo "🌐 Checking internet connectivity..."
-if ! ping -c 1 pypi.org >/dev/null 2>&1 && ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
-  echo "❌ No internet connectivity detected"
-  echo "   Internet is required to download packages"
+# ENHANCEMENT 15: Enhanced DNS/Network Diagnostics
+echo "🌐 Enhanced network connectivity check..."
+log_info "Testing network connectivity..."
+
+# Test 1: DNS resolution
+DNS_OK=0
+if command -v host &>/dev/null && host pypi.org >/dev/null 2>&1; then
+  DNS_OK=1
+elif command -v nslookup &>/dev/null && nslookup pypi.org >/dev/null 2>&1; then
+  DNS_OK=1
+elif command -v dig &>/dev/null && dig +short pypi.org >/dev/null 2>&1; then
+  DNS_OK=1
+fi
+
+if [ "$DNS_OK" = "0" ]; then
+  echo "❌ DNS resolution failed for pypi.org"
+  echo "💡 Troubleshooting:"
+  echo "   1. Check DNS settings (/etc/resolv.conf on Linux, System Preferences on macOS)"
+  echo "   2. Try: ping 8.8.8.8 (tests if basic internet works)"
+  echo "   3. Check if VPN/firewall is blocking DNS"
+  log_error "DNS resolution failed"
   exit 1
 fi
-echo "✅ Internet connectivity confirmed"
+
+log_info "DNS resolution: OK"
+
+# Test 2: HTTPS connectivity to PyPI
+HTTPS_OK=0
+if command -v curl &>/dev/null; then
+  if curl -Is --connect-timeout 10 --max-time 15 https://pypi.org >/dev/null 2>&1; then
+    HTTPS_OK=1
+  fi
+elif command -v wget &>/dev/null; then
+  if wget --spider --timeout=15 https://pypi.org >/dev/null 2>&1; then
+    HTTPS_OK=1
+  fi
+fi
+
+if [ "$HTTPS_OK" = "0" ]; then
+  echo "❌ HTTPS connection to pypi.org failed"
+  echo "💡 Troubleshooting:"
+  echo "   1. Check firewall settings (may be blocking port 443)"
+  echo "   2. Check proxy settings (HTTP_PROXY, HTTPS_PROXY environment variables)"
+  echo "   3. Try: curl -v https://pypi.org (shows detailed error)"
+  log_error "HTTPS connectivity failed"
+  exit 1
+fi
+
+log_info "HTTPS connectivity: OK"
+
+# Test 3: Download speed test (optional, non-blocking)
+if command -v curl &>/dev/null; then
+  DOWNLOAD_SPEED=$(curl -o /dev/null -s -w '%{speed_download}' --connect-timeout 5 --max-time 10 https://pypi.org/simple/ 2>/dev/null | awk '{print int($1)}')
+  if [ -n "$DOWNLOAD_SPEED" ] && [ "$DOWNLOAD_SPEED" -gt 0 ]; then
+    SPEED_KB=$(( DOWNLOAD_SPEED / 1024 ))
+    echo "✅ Network connectivity confirmed (${SPEED_KB} KB/s)"
+    log_info "Network speed: ${SPEED_KB} KB/s"
+  else
+    echo "✅ Network connectivity confirmed"
+    log_info "Network connectivity: OK"
+  fi
+else
+  echo "✅ Network connectivity confirmed"
+  log_info "Network connectivity: OK"
+fi
+
+# ENHANCEMENT 14: System Package Manager Lock Detection (Linux only)
+if [ "$OS_PLATFORM" = "linux" ]; then
+  echo "🔒 Checking system package manager status..."
+  log_info "Checking for package manager locks..."
+
+  PKG_MGR_LOCKED=0
+  LOCK_MESSAGE=""
+
+  # Check for apt lock (Debian/Ubuntu)
+  if command -v apt-get &>/dev/null; then
+    if fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then
+      PKG_MGR_LOCKED=1
+      LOCK_MESSAGE="apt/dpkg is locked (another package operation in progress)"
+    fi
+  fi
+
+  # Check for yum/dnf lock (RHEL/CentOS/Fedora)
+  if [ "$PKG_MGR_LOCKED" = "0" ] && (command -v yum &>/dev/null || command -v dnf &>/dev/null); then
+    if [ -f /var/run/yum.pid ] || [ -f /var/run/dnf.pid ]; then
+      PKG_MGR_LOCKED=1
+      LOCK_MESSAGE="yum/dnf is locked (another package operation in progress)"
+    fi
+  fi
+
+  if [ "$PKG_MGR_LOCKED" = "1" ]; then
+    echo "⚠️  System package manager is locked"
+    echo "   $LOCK_MESSAGE"
+    echo ""
+    echo "💡 Troubleshooting:"
+    echo "   1. Wait for system updates to complete (check: ps aux | grep -E 'apt|yum|dnf')"
+    echo "   2. Re-run this script after updates finish"
+    log_error "Package manager locked: $LOCK_MESSAGE"
+
+    read -p "Continue anyway (may cause Python build to fail)? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      log_info "User cancelled due to package manager lock"
+      exit 1
+    fi
+    log_warn "User chose to continue despite package manager lock"
+  else
+    echo "✅ System package manager available"
+    log_info "Package manager: unlocked"
+  fi
+else
+  log_debug "Skipping package manager lock check (not Linux)"
+fi
 
 # Check 3: Write Permissions
 echo "🔐 Checking write permissions..."
 if ! touch "$ENV_DIR/.write_test" 2>/dev/null; then
   echo "❌ No write permission in $ENV_DIR"
   echo "   Please check directory permissions"
+  log_error "No write permission in $ENV_DIR"
   exit 1
 fi
 rm -f "$ENV_DIR/.write_test"
 echo "✅ Write permissions verified"
+log_info "Write permissions: OK"
 
 # Check 4: System Dependencies and Tools
 echo "🔧 Checking system dependencies..."
@@ -701,6 +808,69 @@ fi
 # Activate virtualenv
 source .venv/bin/activate
 
+# ENHANCEMENT 16: Python Version Compatibility Pre-check
+echo "🐍 Checking Python version compatibility..."
+PYTHON_VERSION=$(python --version 2>&1 | awk '{print $2}')
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+log_info "Python version: $PYTHON_VERSION"
+echo "   Active Python: $PYTHON_VERSION"
+
+# Check for known incompatibilities
+if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 13 ]; then
+  echo "⚠️  Python 3.13+ detected - some packages may have compatibility issues"
+  echo "💡 Recommendation: Python 3.12 is most stable for this package set"
+  log_warn "Python 3.13+ detected - potential compatibility issues"
+elif [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -le 9 ]; then
+  echo "⚠️  Python 3.9 or older detected - some packages require Python 3.10+"
+  echo "💡 Recommendation: Upgrade to Python 3.12 for best compatibility"
+  log_warn "Python 3.9 or older - may miss package features"
+else
+  echo "✅ Python version compatible ($PYTHON_VERSION)"
+  log_info "Python version check: compatible"
+fi
+
+# Check if python version matches venv
+if [ -f ".venv/pyvenv.cfg" ]; then
+  VENV_PYTHON=$(grep "version" .venv/pyvenv.cfg | awk '{print $3}' | head -1)
+  if [ -n "$VENV_PYTHON" ] && [ "$VENV_PYTHON" != "$PYTHON_VERSION" ]; then
+    echo "⚠️  Python version mismatch detected:"
+    echo "   Active:    $PYTHON_VERSION"
+    echo "   Venv:      $VENV_PYTHON"
+    echo "💡 Consider: ./setup_base_env.sh --force-reinstall"
+    log_warn "Python version mismatch: Active=$PYTHON_VERSION, Venv=$VENV_PYTHON"
+  fi
+fi
+
+# ENHANCEMENT 12: Network Resilience Function (for critical operations)
+retry_command() {
+  local max_attempts=3
+  local timeout=2
+  local attempt=1
+  local cmd="$@"
+
+  while [ $attempt -le $max_attempts ]; do
+    log_debug "Attempt $attempt/$max_attempts: $cmd"
+    if eval "$cmd"; then
+      return 0
+    fi
+
+    if [ $attempt -lt $max_attempts ]; then
+      echo "⚠️  Command failed, retrying in ${timeout}s... (attempt $attempt/$max_attempts)"
+      log_warn "Retry attempt $attempt failed, waiting ${timeout}s"
+      sleep $timeout
+      timeout=$(( timeout * 2 ))
+    fi
+    attempt=$(( attempt + 1 ))
+  done
+
+  log_error "Command failed after $max_attempts attempts: $cmd"
+  return 1
+}
+
+log_info "Network resilience: retry_command function loaded"
+
 # Smart API key management from .env-keys.yml
 API_KEYS_YAML="$HOME/Dropbox/Environments/.env-keys.yml"
 
@@ -891,26 +1061,99 @@ export PIP_CACHE_DIR="$ENV_DIR/.pip-cache"
 export WHEEL_CACHE_DIR="$ENV_DIR/.wheels"
 mkdir -p "$PIP_CACHE_DIR" "$WHEEL_CACHE_DIR"
 
-# ENHANCEMENT 9: Parallel Pip Downloads (pip 20.3+)
+# ENHANCEMENT 11: Adaptive Parallel Streams (CPU + Memory Aware)
 export PIP_NO_INPUT=1
 export PIP_PROGRESS_BAR=on
 export PIP_DEFAULT_TIMEOUT=100
 
+# Detect CPU cores (cross-platform)
+if [ "$OS_PLATFORM" = "macos" ]; then
+  CPU_CORES=$(sysctl -n hw.ncpu 2>/dev/null || echo "4")
+elif [ "$OS_PLATFORM" = "linux" ]; then
+  CPU_CORES=$(nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo "4")
+else
+  CPU_CORES=4
+fi
+
+log_info "Detected $CPU_CORES CPU cores"
+
+# Calculate optimal parallel builds (conservative for robustness)
+# Formula: min(cores/2, 8) but only if sufficient memory (>=4GB)
+OPTIMAL_PARALLEL=1  # Default to sequential for maximum safety
+
+if [ "$FREE_MEM_GB" -ge 4 ] && [ "$CPU_CORES" -ge 2 ]; then
+  # Conservative: half of cores, max 8, min 2
+  OPTIMAL_PARALLEL=$(( CPU_CORES / 2 ))
+  [ "$OPTIMAL_PARALLEL" -lt 2 ] && OPTIMAL_PARALLEL=2
+  [ "$OPTIMAL_PARALLEL" -gt 8 ] && OPTIMAL_PARALLEL=8
+  log_info "Calculated optimal parallel streams: $OPTIMAL_PARALLEL"
+else
+  log_info "Using sequential mode: ${FREE_MEM_GB}GB RAM or ${CPU_CORES} cores insufficient"
+fi
+
+# Allow user override via environment variable (for expert users)
+if [ -n "${PIP_PARALLEL_BUILDS:-}" ]; then
+  OPTIMAL_PARALLEL=$PIP_PARALLEL_BUILDS
+  log_info "User override: PIP_PARALLEL_BUILDS=$OPTIMAL_PARALLEL"
+fi
+
 # Enable parallel downloads if pip version supports it
 PIP_VERSION=$(pip --version 2>/dev/null | awk '{print $2}' | cut -d. -f1,2)
 if command -v bc &>/dev/null && [ $(echo "$PIP_VERSION >= 20.3" | bc) -eq 1 ]; then
-  export PIP_PARALLEL_BUILDS=4
-  echo "⚡ Parallel pip downloads: ENABLED (4 concurrent)"
-  log_info "Parallel downloads enabled"
+  if [ "$OPTIMAL_PARALLEL" -gt 1 ]; then
+    export PIP_PARALLEL_BUILDS=$OPTIMAL_PARALLEL
+    echo "⚡ Adaptive parallel downloads: ENABLED ($OPTIMAL_PARALLEL streams)"
+    echo "   Based on: $CPU_CORES cores, ${FREE_MEM_GB}GB RAM available"
+    log_info "Parallel downloads: $OPTIMAL_PARALLEL streams (adaptive)"
+  else
+    echo "💾 Sequential downloads (conservative: insufficient resources)"
+    log_info "Sequential mode: ${FREE_MEM_GB}GB RAM < 4GB threshold or ${CPU_CORES} < 2 cores"
+  fi
 else
-  echo "💾 Sequential downloads (pip < 20.3)"
-  log_info "Sequential downloads mode"
+  echo "💾 Sequential downloads (pip < 20.3 does not support parallelism)"
+  log_info "Sequential downloads: pip version $PIP_VERSION < 20.3"
 fi
 
 # Network optimization flags
 echo "💾 Pip cache enabled at: $PIP_CACHE_DIR"
 echo "📦 Wheel cache enabled at: $WHEEL_CACHE_DIR"
 log_info "Cache directories configured"
+
+# ENHANCEMENT 13: Pip Cache Corruption Detection & Cleanup
+check_pip_cache_health() {
+  local cache_dir="$PIP_CACHE_DIR"
+
+  if [ ! -d "$cache_dir" ]; then
+    return 0
+  fi
+
+  # Check for .tmp files (interrupted downloads)
+  local tmp_count=$(find "$cache_dir" -name "*.tmp" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$tmp_count" -gt 50 ]; then
+    echo "⚠️  Found $tmp_count incomplete downloads in pip cache"
+    echo "🧹 Cleaning corrupted cache files..."
+    find "$cache_dir" -name "*.tmp" -delete 2>/dev/null
+    log_warn "Cleaned $tmp_count corrupted cache files (.tmp)"
+    echo "✅ Cache cleanup complete"
+  elif [ "$tmp_count" -gt 0 ]; then
+    log_debug "Found $tmp_count .tmp files in cache (below threshold)"
+  fi
+
+  # Check cache size (>10GB is suspicious)
+  if command -v du &>/dev/null; then
+    local cache_size=$(du -sg "$cache_dir" 2>/dev/null | awk '{print $1}' || echo "0")
+    if [ "$cache_size" -gt 10 ]; then
+      echo "⚠️  Pip cache is ${cache_size}GB (unusually large)"
+      echo "💡 Consider running: pip cache purge"
+      log_warn "Large pip cache detected: ${cache_size}GB"
+    else
+      log_debug "Pip cache size: ${cache_size}GB (healthy)"
+    fi
+  fi
+}
+
+echo "🔍 Checking pip cache health..."
+check_pip_cache_health
 
 # ENHANCEMENT 3 & 4: Hash Integrity Verification & Atomic Operations
 # Function to safely write files atomically
@@ -2473,7 +2716,7 @@ GITEOF
 echo "✅ Environment setup complete!"
 echo "👉 To activate: source $ENV_DIR/.venv/bin/activate"
 echo ""
-echo "🚀 Enhanced Production-Grade Environment Setup Complete! (v3.1)"
+echo "🚀 Enhanced Production-Grade Environment Setup Complete! (v3.2)"
 echo "================================================================"
 log_info "Environment setup completed successfully"
 echo ""
