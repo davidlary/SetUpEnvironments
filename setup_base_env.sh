@@ -21,19 +21,78 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # ============================================================================
-# ENHANCEMENT 1: CONCURRENT SAFETY - File Locking
+# ENHANCEMENT 1: CONCURRENT SAFETY - File Locking with Stale Lock Detection
 # ============================================================================
 LOCKFILE="/tmp/setup_base_env.lock"
 LOCKFD=200
 
+# Function to detect and clean up stale lock files
+check_stale_lock() {
+  if [ ! -f "$LOCKFILE" ]; then
+    return 0  # No lock file, nothing to check
+  fi
+
+  # Try to read PID from lock file
+  local lock_pid
+  lock_pid=$(cat "$LOCKFILE" 2>/dev/null || echo "")
+
+  if [ -z "$lock_pid" ]; then
+    echo "⚠️  Found empty lock file, removing..."
+    rm -f "$LOCKFILE"
+    return 0
+  fi
+
+  # Check if process with that PID exists
+  if ! ps -p "$lock_pid" >/dev/null 2>&1; then
+    echo "⚠️  Found stale lock file (PID $lock_pid no longer running)"
+    echo "🧹 Cleaning up stale lock..."
+    rm -f "$LOCKFILE"
+    return 0
+  fi
+
+  # Check if the process is actually this script
+  local proc_cmd
+  proc_cmd=$(ps -p "$lock_pid" -o command= 2>/dev/null || echo "")
+
+  if [[ "$proc_cmd" != *"setup_base_env.sh"* ]]; then
+    echo "⚠️  Lock file PID $lock_pid belongs to different process: $proc_cmd"
+    echo "🧹 Cleaning up incorrect lock..."
+    rm -f "$LOCKFILE"
+    return 0
+  fi
+
+  # Lock is valid - process exists and is running this script
+  return 1
+}
+
 # Function to acquire exclusive lock
 acquire_lock() {
+  # First, check for and remove any stale locks
+  if ! check_stale_lock; then
+    # Lock exists and is valid (process still running)
+    echo "❌ Another instance of this script is already running!"
+    echo "   Lock file: $LOCKFILE"
+
+    # Show which process has the lock
+    local lock_pid
+    lock_pid=$(cat "$LOCKFILE" 2>/dev/null || echo "unknown")
+    if [ "$lock_pid" != "unknown" ] && ps -p "$lock_pid" >/dev/null 2>&1; then
+      echo "   Locked by PID: $lock_pid"
+      echo "   Process: $(ps -p "$lock_pid" -o command= 2>/dev/null)"
+    fi
+
+    echo "   If you're sure no other instance is running, remove: $LOCKFILE"
+    exit 1
+  fi
+
+  # At this point, any stale lock has been removed
+  # Try to acquire the lock
   eval "exec $LOCKFD>$LOCKFILE"
 
   if ! flock -n $LOCKFD 2>/dev/null; then
-    echo "❌ Another instance of this script is already running!"
-    echo "   Lock file: $LOCKFILE"
-    echo "   If you're sure no other instance is running, remove: $LOCKFILE"
+    # This should rarely happen after stale lock check, but handle it
+    echo "❌ Unable to acquire lock (race condition?)"
+    echo "   Try again in a moment"
     exit 1
   fi
 
@@ -47,6 +106,14 @@ release_lock() {
   if [ -n "${LOCKFD:-}" ]; then
     flock -u $LOCKFD 2>/dev/null || true
     rm -f "$LOCKFILE" 2>/dev/null || true
+
+    # Verify lock file was removed
+    if [ -f "$LOCKFILE" ]; then
+      echo "⚠️  Warning: Lock file still exists after cleanup attempt"
+      # Try once more with force
+      rm -f "$LOCKFILE" 2>/dev/null || true
+    fi
+
     echo "🔓 Released lock"
   fi
 }
@@ -2775,3 +2842,10 @@ echo "   • Compressed snapshots: 70-80% smaller, 2-3x faster"
 echo ""
 log_info "All enhancements active and operational"
 log_info "Session complete - environment ready for use"
+
+# Final verification: Ensure lock file is cleaned up on successful completion
+# (This is redundant with the trap, but provides extra safety)
+if [ -f "$LOCKFILE" ]; then
+  log_debug "Final cleanup: Removing lock file"
+  rm -f "$LOCKFILE" 2>/dev/null || true
+fi
