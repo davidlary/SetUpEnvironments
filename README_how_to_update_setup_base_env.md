@@ -143,7 +143,7 @@ PACKAGES TO ADD/UPDATE:
 [Rest of prompt from above...]
 ```
 
-### Scenario 4: Checking for Latest Versions with Update Mode
+### Scenario 4: Checking for Latest Versions with Update Mode (FULLY AUTONOMOUS)
 
 **Command:**
 ```bash
@@ -154,19 +154,27 @@ cd /path/to/your/environments/directory
 **What this does:**
 - **Part 0: Homebrew Update** - Updates Homebrew package database first
 - **Part 1: Comprehensive Toolchain Check** - Checks ALL environment components:
-  - pyenv, Python, pip, pip-tools (automatic updates)
-  - R, Julia (manual brew upgrade recommended)
-  - System dependencies: libgit2, libpq, openssl@3 (manual brew upgrade recommended)
+  - pyenv, Python, pip, pip-tools (FULLY automatic updates)
+  - R, Julia (FULLY automatic brew upgrades)
+  - System dependencies: libgit2, libpq, openssl@3 (FULLY automatic brew upgrades)
 - **Part 2: Python Package Check** - Checks all Python packages for latest versions
-- **Part 3: Conflict Testing** - Tests if old conflicts have been resolved
-- Creates temporary test environments to verify compatibility
-- Compares current vs. latest versions for all components
-- **Evaluates ALL results** - Checks that EVERYTHING passed all tests
-- **ONLY offers automatic updates if ALL tests pass** - ensures maximum stability
-- **Provides manual update commands** for R, Julia, and system dependencies
-- **Refuses to apply updates** if any test fails and explains why
-- Restores original configuration if conflicts are detected
-- Automatically enables adaptive mode for intelligent conflict resolution
+- **Part 3: Conflict Testing and AUTOMATIC Updates** - Tests and applies updates:
+  - Creates temporary test environments to verify compatibility
+  - Compares current vs. latest versions for all components
+  - **Evaluates ALL results** - Checks that EVERYTHING passed all tests
+  - **ONLY applies updates if ALL tests pass** - ensures maximum stability
+  - **FULLY AUTONOMOUS automatic updates** - ALL components updated automatically:
+    * pyenv via Homebrew
+    * Python via pyenv
+    * pip and pip-tools
+    * R via Homebrew
+    * Julia via Homebrew
+    * System dependencies via Homebrew
+    * Python packages via requirements.in
+  - **Graceful error handling** - Continues on non-critical failures
+  - **Refuses to apply updates** if any test fails and explains why
+  - Restores original configuration if conflicts are detected
+  - Automatically enables adaptive mode for intelligent conflict resolution
 
 **When to use:**
 - Monthly or quarterly comprehensive environment maintenance
@@ -245,35 +253,39 @@ cd /path/to/your/environments/directory
 
 ✅ ALL TESTS PASSED - Safe to apply updates!
 
-💡 Summary of available automatic updates:
+💡 Summary of available AUTOMATIC updates:
+   • pyenv: 2.3.35 → 2.4.0 (automatic)
    • Python: 3.12.7 → 3.12.9 (automatic)
-   • pip-tools: 7.5.1 → 7.6.2 (automatic)
    • pip: 24.3.1 → 25.0.0 (automatic)
+   • pip-tools: 7.5.1 → 7.6.2 (automatic)
+   • R: 4.3.2 → 4.4.0 (automatic)
+   • Julia: 1.10.0 → 1.10.5 (automatic)
+   • System dependencies: libgit2, libpq, openssl@3 (automatic)
    • Python packages: Update smart constraints to latest compatible versions (automatic)
 
-💡 Additional updates available (require manual upgrade):
-   • R: 4.3.2 → 4.4.0 (run: brew upgrade r)
-   • System dependencies (run: brew upgrade libgit2 libpq openssl@3)
-
-❓ Apply automatic updates? (Python toolchain and packages)
+❓ Apply ALL automatic updates? (All toolchain components and packages)
    Press Ctrl+C to cancel, or wait 10 seconds to apply...
 
-📝 APPLYING UPDATES...
----------------------
+📝 APPLYING ALL AUTOMATIC UPDATES...
+------------------------------------
+🔧 Updating pyenv...
+✅ pyenv updated to 2.4.0
 🐍 Installing Python 3.12.9...
 ✅ Python updated to 3.12.9
 📦 Updating pip and pip-tools...
 ✅ pip updated to 25.0.0
 ✅ pip-tools updated to 7.6.2
 💡 Consider updating pip constraint in setup_base_env.sh from 'pip<25.2' to 'pip<25.1'
+📊 Updating R...
+✅ R updated to 4.4.0
+📈 Updating Julia...
+✅ Julia updated to 1.10.5
+🔧 Updating system dependencies...
+✅ System dependencies updated
 📝 Applying package updates to requirements.in...
 ✅ Updated requirements.in with latest compatible versions
 
-🎉 All automatic updates applied successfully!
-
-⚠️  Manual updates still needed:
-   📊 R: brew upgrade r
-   🔧 System deps: brew upgrade libgit2 libpq openssl@3
+🎉 ALL automatic updates applied successfully!
 
 🔄 UPDATE MODE COMPLETE - Proceeding with installation...
 ```

@@ -11,7 +11,8 @@
 #   ./setup_base_env.sh                    # Fast mode (default)
 #   ./setup_base_env.sh --adaptive         # Enable adaptive conflict resolution
 #   ./setup_base_env.sh --force-reinstall  # Force full reinstall (clears .venv)
-#   ./setup_base_env.sh --update           # Check for latest versions and resolve old conflicts
+#   ./setup_base_env.sh --update           # FULLY AUTONOMOUS: Check and auto-update ALL components
+#   ./setup_base_env.sh --clearlock        # Clear any stale lock files and exit
 #   ./setup_base_env.sh --help             # Show usage information
 #   ENABLE_ADAPTIVE=1 ./setup_base_env.sh  # Enable via environment variable
 #
@@ -22,16 +23,17 @@ IFS=$'\n\t'
 
 # ============================================================================
 # ENHANCEMENT 1: CONCURRENT SAFETY - File Locking with Stale Lock Detection
+# Cross-platform implementation (works on macOS and Linux without flock)
 # ============================================================================
+LOCKDIR="/tmp/setup_base_env.lock.d"
 LOCKFILE="/tmp/setup_base_env.lock"
-LOCKFD=200
 
 # Function to log stage progress to lock file
 log_stage() {
   local stage="$1"
   local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
-  if [ -n "${LOCKFD:-}" ]; then
+  if [ -d "$LOCKDIR" ]; then
     # Append stage info to lock file (PID is on line 1, stages follow)
     echo "[${timestamp}] ${stage}" >> "$LOCKFILE"
   fi
@@ -54,6 +56,7 @@ check_stale_lock() {
   if [ -z "$lock_pid" ]; then
     echo "⚠️  Found empty lock file, removing..."
     rm -f "$LOCKFILE"
+    rm -rf "$LOCKDIR"
     return 0
   fi
 
@@ -71,6 +74,7 @@ check_stale_lock() {
     fi
     echo "🧹 Cleaning up stale lock..."
     rm -f "$LOCKFILE"
+    rm -rf "$LOCKDIR"
     return 0
   fi
 
@@ -82,6 +86,7 @@ check_stale_lock() {
     echo "⚠️  Lock file PID $lock_pid belongs to different process: $proc_cmd"
     echo "🧹 Cleaning up incorrect lock..."
     rm -f "$LOCKFILE"
+    rm -rf "$LOCKDIR"
     return 0
   fi
 
@@ -93,7 +98,7 @@ check_stale_lock() {
   return 1
 }
 
-# Function to acquire exclusive lock
+# Function to acquire exclusive lock (cross-platform: works without flock)
 acquire_lock() {
   # First, check for and remove any stale locks
   if ! check_stale_lock; then
@@ -109,36 +114,52 @@ acquire_lock() {
       echo "   Process: $(ps -p "$lock_pid" -o command= 2>/dev/null)"
     fi
 
-    echo "   If you're sure no other instance is running, remove: $LOCKFILE"
+    echo "   If you're sure no other instance is running, run: $0 --clearlock"
     exit 1
   fi
 
-  # At this point, any stale lock has been removed
-  # Try to acquire the lock
-  eval "exec $LOCKFD>$LOCKFILE"
+  # Use mkdir as atomic lock operation (works on all POSIX systems)
+  # mkdir is atomic - it will fail if directory already exists
+  local max_attempts=5
+  local attempt=1
 
-  if ! flock -n $LOCKFD 2>/dev/null; then
-    # This should rarely happen after stale lock check, but handle it
-    echo "❌ Unable to acquire lock (race condition?)"
-    echo "   Try again in a moment"
-    exit 1
-  fi
+  while [ $attempt -le $max_attempts ]; do
+    if mkdir "$LOCKDIR" 2>/dev/null; then
+      # Successfully created lock directory
+      # Write PID and metadata to lock file
+      echo $$ > "$LOCKFILE"
+      echo "🔒 Acquired exclusive lock (PID: $$)"
+      return 0
+    fi
 
-  # Write PID to lockfile
-  echo $$ >&$LOCKFD
-  echo "🔒 Acquired exclusive lock (PID: $$)"
+    # Failed to create directory - check if it's stale
+    if check_stale_lock; then
+      # Stale lock was removed, try again
+      attempt=$((attempt + 1))
+      continue
+    else
+      # Valid lock exists
+      echo "❌ Unable to acquire lock (another instance is running)"
+      echo "   Run: $0 --clearlock (if you're sure no other instance is running)"
+      exit 1
+    fi
+  done
+
+  echo "❌ Unable to acquire lock after $max_attempts attempts"
+  exit 1
 }
 
 # Function to release lock
 release_lock() {
-  if [ -n "${LOCKFD:-}" ]; then
-    flock -u $LOCKFD 2>/dev/null || true
+  if [ -d "$LOCKDIR" ]; then
     rm -f "$LOCKFILE" 2>/dev/null || true
+    rmdir "$LOCKDIR" 2>/dev/null || true
 
-    # Verify lock file was removed
-    if [ -f "$LOCKFILE" ]; then
-      echo "⚠️  Warning: Lock file still exists after cleanup attempt"
+    # Verify lock was removed
+    if [ -d "$LOCKDIR" ] || [ -f "$LOCKFILE" ]; then
+      echo "⚠️  Warning: Lock files still exist after cleanup attempt"
       # Try once more with force
+      rm -rf "$LOCKDIR" 2>/dev/null || true
       rm -f "$LOCKFILE" 2>/dev/null || true
     fi
 
@@ -149,7 +170,124 @@ release_lock() {
 # Ensure lock is released on exit
 trap release_lock EXIT INT TERM
 
-# Acquire lock immediately
+# ============================================================================
+# PARSE COMMAND LINE ARGUMENTS FIRST (before acquiring lock)
+# ============================================================================
+ENABLE_ADAPTIVE=${ENABLE_ADAPTIVE:-0}
+FORCE_REINSTALL=0
+UPDATE_MODE=0
+CLEAR_LOCK_MODE=0
+
+# Check for flags
+for arg in "$@"; do
+  case $arg in
+    --adaptive)
+      ENABLE_ADAPTIVE=1
+      shift
+      ;;
+    --no-adaptive)
+      ENABLE_ADAPTIVE=0
+      shift
+      ;;
+    --force-reinstall)
+      FORCE_REINSTALL=1
+      shift
+      ;;
+    --update)
+      UPDATE_MODE=1
+      ENABLE_ADAPTIVE=1  # Auto-enable adaptive mode for update
+      shift
+      ;;
+    --clearlock)
+      CLEAR_LOCK_MODE=1
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: $0 [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  --adaptive         Enable adaptive conflict resolution (slower but smarter)"
+      echo "  --no-adaptive      Disable adaptive resolution (faster, default)"
+      echo "  --force-reinstall  Force full reinstall by clearing .venv and caches"
+      echo "  --update           Comprehensive check and FULLY AUTONOMOUS update of ALL components:"
+      echo "                     • Homebrew (auto-updated)"
+      echo "                     • pyenv, Python, pip, pip-tools (fully automatic updates)"
+      echo "                     • R, Julia (fully automatic brew upgrades)"
+      echo "                     • System dependencies (fully automatic brew upgrades)"
+      echo "                     • Python packages (automatic with conflict testing)"
+      echo "                     ONLY applies updates if ALL tests pass (maximum stability)"
+      echo "                     (automatically enables adaptive mode for intelligent resolution)"
+      echo "  --clearlock        Clear any stale lock files and exit"
+      echo "  --help, -h         Show this help message"
+      echo ""
+      echo "Environment Variables:"
+      echo "  ENABLE_ADAPTIVE=1    Enable adaptive resolution"
+      echo ""
+      echo "Default: Fast mode with basic conflict detection"
+      exit 0
+      ;;
+  esac
+done
+
+# Handle --clearlock option (before acquiring lock)
+if [ "$CLEAR_LOCK_MODE" = "1" ]; then
+  echo "🧹 Clearing lock files..."
+
+  LOCK_EXISTS=0
+
+  # Check for lock file
+  if [ -f "$LOCKFILE" ]; then
+    LOCK_EXISTS=1
+    # Show info about the lock
+    LOCK_PID=$(head -n 1 "$LOCKFILE" 2>/dev/null || echo "unknown")
+    if [ "$LOCK_PID" != "unknown" ]; then
+      echo "   Lock file PID: $LOCK_PID"
+      if ps -p "$LOCK_PID" >/dev/null 2>&1; then
+        PROC_CMD=$(ps -p "$LOCK_PID" -o command= 2>/dev/null || echo "unknown")
+        echo "   Process: $PROC_CMD"
+        echo "   ⚠️  Warning: Process is still running!"
+        read -p "Are you sure you want to remove the lock? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+          echo "❌ Cancelled - lock not removed"
+          exit 1
+        fi
+      else
+        echo "   Process no longer running (stale lock)"
+      fi
+    fi
+  fi
+
+  # Check for lock directory
+  if [ -d "$LOCKDIR" ]; then
+    LOCK_EXISTS=1
+    echo "   Lock directory: $LOCKDIR"
+  fi
+
+  if [ "$LOCK_EXISTS" = "1" ]; then
+    # Remove lock files
+    rm -f "$LOCKFILE" 2>/dev/null || true
+    rm -rf "$LOCKDIR" 2>/dev/null || true
+
+    # Verify removal
+    if [ ! -f "$LOCKFILE" ] && [ ! -d "$LOCKDIR" ]; then
+      echo "✅ Lock files removed successfully"
+      exit 0
+    else
+      echo "❌ Failed to remove some lock files"
+      [ -f "$LOCKFILE" ] && echo "   Still exists: $LOCKFILE"
+      [ -d "$LOCKDIR" ] && echo "   Still exists: $LOCKDIR"
+      exit 1
+    fi
+  else
+    echo "ℹ️  No lock files found"
+    echo "   Checked: $LOCKFILE"
+    echo "   Checked: $LOCKDIR"
+    exit 0
+  fi
+fi
+
+# Acquire lock (after parsing arguments)
 acquire_lock
 
 # Log initial stage
@@ -188,54 +326,6 @@ log_info "Base Environment Setup Script v3.3 - Enhanced"
 log_info "Log file: $LOG_FILE"
 log_info "==================================================================="
 
-# Parse command line arguments and environment variables
-ENABLE_ADAPTIVE=${ENABLE_ADAPTIVE:-0}
-FORCE_REINSTALL=0
-UPDATE_MODE=0
-
-# Check for flags
-for arg in "$@"; do
-  case $arg in
-    --adaptive)
-      ENABLE_ADAPTIVE=1
-      shift
-      ;;
-    --no-adaptive)
-      ENABLE_ADAPTIVE=0
-      shift
-      ;;
-    --force-reinstall)
-      FORCE_REINSTALL=1
-      shift
-      ;;
-    --update)
-      UPDATE_MODE=1
-      ENABLE_ADAPTIVE=1  # Auto-enable adaptive mode for update
-      shift
-      ;;
-    --help|-h)
-      echo "Usage: $0 [--adaptive|--no-adaptive|--force-reinstall|--update]"
-      echo ""
-      echo "Options:"
-      echo "  --adaptive         Enable adaptive conflict resolution (slower but smarter)"
-      echo "  --no-adaptive      Disable adaptive resolution (faster, default)"
-      echo "  --force-reinstall  Force full reinstall by clearing .venv and caches"
-      echo "  --update           Comprehensive check for latest versions of ALL components:"
-      echo "                     • Homebrew, pyenv, Python, pip, pip-tools (automatic updates)"
-      echo "                     • R, Julia, system dependencies (manual brew upgrade)"
-      echo "                     • Python packages with conflict testing"
-      echo "                     ONLY offers updates if ALL tests pass (maximum stability)"
-      echo "                     (automatically enables adaptive mode for intelligent resolution)"
-      echo ""
-      echo "Environment Variables:"
-      echo "  ENABLE_ADAPTIVE=1    Enable adaptive resolution"
-      echo ""
-      echo "Default: Fast mode with basic conflict detection"
-      exit 0
-      ;;
-  esac
-done
-
 if [ "$FORCE_REINSTALL" = "1" ]; then
   echo "🧹 Force reinstall mode: ENABLED"
 elif [ "$UPDATE_MODE" = "1" ]; then
@@ -255,15 +345,56 @@ if ! command -v brew &>/dev/null; then
 fi
 echo "✅ Homebrew is installed."
 
-# Required system packages (including flock for file locking)
-for pkg in libgit2 libpq openssl@3 flock; do
+# Required system packages (with graceful error handling)
+echo "🔧 Checking system dependencies..."
+FAILED_PACKAGES=()
+
+for pkg in libgit2 libpq openssl@3; do
   if ! brew list "$pkg" &>/dev/null; then
     echo "📦 Installing $pkg..."
-    brew install "$pkg"
+
+    # Temporarily disable exit-on-error for graceful handling
+    set +e
+    brew install "$pkg" 2>&1
+    INSTALL_STATUS=$?
+    set -e
+
+    if [ $INSTALL_STATUS -ne 0 ]; then
+      echo "⚠️  Failed to install $pkg"
+      FAILED_PACKAGES+=("$pkg")
+    else
+      echo "✅ $pkg installed successfully"
+    fi
   else
-    echo "✅ $pkg already installed."
+    echo "✅ $pkg already installed"
   fi
 done
+
+# Report any installation failures
+if [ ${#FAILED_PACKAGES[@]} -gt 0 ]; then
+  echo ""
+  echo "⚠️  Warning: Some system packages failed to install:"
+  for pkg in "${FAILED_PACKAGES[@]}"; do
+    echo "   • $pkg"
+  done
+  echo ""
+  echo "💡 These packages are needed for compiling Python packages with C extensions."
+  echo "   The script will continue, but some packages may fail to install."
+  echo ""
+  echo "📋 To install manually later:"
+  for pkg in "${FAILED_PACKAGES[@]}"; do
+    echo "   brew install $pkg"
+  done
+  echo ""
+
+  read -p "Continue anyway? (y/N): " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "❌ Installation cancelled"
+    exit 1
+  fi
+  echo "⚠️  Continuing with missing dependencies..."
+fi
 
 # Setup environment directory
 ENV_DIR="$HOME/Dropbox/Environments/base-env"
@@ -884,13 +1015,18 @@ if [ "$FORCE_REINSTALL" = "1" ]; then
   echo "✅ Environment cleared for fresh installation"
 fi
 
-# Install pyenv if needed (cross-platform)
+# Install pyenv if needed (cross-platform with graceful error handling)
 if ! command -v pyenv &>/dev/null; then
   echo "🧰 Installing pyenv..."
 
+  # Temporarily disable exit-on-error for graceful handling
+  set +e
+  PYENV_INSTALL_FAILED=0
+
   if [ "$OS_PLATFORM" = "macos" ]; then
     if command -v brew &>/dev/null; then
-      brew install pyenv
+      brew install pyenv 2>&1
+      PYENV_INSTALL_FAILED=$?
     else
       echo "❌ Homebrew not available - cannot install pyenv automatically"
       echo "   Please install Homebrew first: https://brew.sh"
@@ -899,14 +1035,38 @@ if ! command -v pyenv &>/dev/null; then
   elif [ "$OS_PLATFORM" = "linux" ]; then
     # Use pyenv-installer for Linux
     echo "📥 Using pyenv-installer for Linux..."
-    curl https://pyenv.run | bash
+    curl -s https://pyenv.run | bash 2>&1
+    PYENV_INSTALL_FAILED=$?
 
     # Add pyenv to PATH for this session
     export PYENV_ROOT="$HOME/.pyenv"
     export PATH="$PYENV_ROOT/bin:$PATH"
   fi
 
-  echo "✅ pyenv installed"
+  # Re-enable exit-on-error
+  set -e
+
+  # Check if installation succeeded
+  if [ $PYENV_INSTALL_FAILED -ne 0 ]; then
+    echo "⚠️  pyenv installation encountered issues"
+    echo ""
+    echo "💡 You can install pyenv manually:"
+    if [ "$OS_PLATFORM" = "macos" ]; then
+      echo "   brew install pyenv"
+    else
+      echo "   curl https://pyenv.run | bash"
+    fi
+    echo ""
+    read -p "Continue without pyenv? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      echo "❌ Installation cancelled"
+      exit 1
+    fi
+    echo "⚠️  Continuing without pyenv (using system Python)..."
+  else
+    echo "✅ pyenv installed"
+  fi
 fi
 
 # Configure shell for pyenv (cross-platform)
@@ -1204,10 +1364,40 @@ for key in OPENAI_API_KEY XAI_API_KEY GOOGLE_API_KEY GITHUB_TOKEN GITHUB_EMAIL G
   fi
 done
 
-# Install pip-tools and ensure version locking is supported
+# Install pip-tools and ensure version locking is supported (with graceful error handling)
 # Pin pip to < 25.2 for compatibility with pip-tools 7.5.1
-pip install --upgrade 'pip<25.2' setuptools wheel
-pip install pip-tools
+echo "📦 Installing/upgrading pip, setuptools, and wheel..."
+
+set +e
+pip install --upgrade 'pip<25.2' setuptools wheel 2>&1
+PIP_UPGRADE_STATUS=$?
+set -e
+
+if [ $PIP_UPGRADE_STATUS -ne 0 ]; then
+  echo "⚠️  Failed to upgrade pip/setuptools/wheel"
+  echo "💡 This may cause issues with package installation"
+  echo ""
+  read -p "Continue anyway? (y/N): " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "❌ Installation cancelled"
+    exit 1
+  fi
+fi
+
+echo "📦 Installing pip-tools..."
+set +e
+pip install pip-tools 2>&1
+PIPTOOLS_STATUS=$?
+set -e
+
+if [ $PIPTOOLS_STATUS -ne 0 ]; then
+  echo "❌ Failed to install pip-tools (required for this script)"
+  echo "💡 Try manually: pip install pip-tools"
+  exit 1
+fi
+
+echo "✅ pip-tools installed successfully"
 
 # 🚀 PERFORMANCE OPTIMIZATION: Setup caching and network optimization
 export PIP_CACHE_DIR="$ENV_DIR/.pip-cache"
@@ -2067,11 +2257,13 @@ if [ "$UPDATE_MODE" = "1" ]; then
   echo "📦 Current pyenv: $CURRENT_PYENV_VERSION"
 
   # Check if pyenv has updates available
+  PYENV_UPDATE_AVAILABLE=0
   if command -v brew &>/dev/null; then
     LATEST_PYENV_VERSION=$(brew info pyenv | head -1 | awk '{print $3}')
     if [ "$CURRENT_PYENV_VERSION" != "$LATEST_PYENV_VERSION" ]; then
       echo "  📦 Update available: pyenv $CURRENT_PYENV_VERSION → $LATEST_PYENV_VERSION"
-      echo "  💡 To update: brew upgrade pyenv"
+      echo "  💡 Will be upgraded automatically if you choose to apply updates"
+      PYENV_UPDATE_AVAILABLE=1
     else
       echo "  ✅ pyenv is up to date"
     fi
@@ -2171,7 +2363,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
       LATEST_R=$(brew info r | head -1 | awk '{print $3}')
       if [ "$CURRENT_R" != "$LATEST_R" ]; then
         echo "  📦 Update available: R $CURRENT_R → $LATEST_R"
-        echo "  💡 To update: brew upgrade r"
+        echo "  💡 Will be upgraded automatically if you choose to apply updates"
         R_UPDATE_AVAILABLE=1
       else
         echo "  ✅ R is up to date"
@@ -2196,7 +2388,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
       LATEST_JULIA=$(brew info julia | head -1 | awk '{print $3}')
       if [ "$CURRENT_JULIA" != "$LATEST_JULIA" ]; then
         echo "  📦 Update available: Julia $CURRENT_JULIA → $LATEST_JULIA"
-        echo "  💡 To update: brew upgrade julia"
+        echo "  💡 Will be upgraded automatically if you choose to apply updates"
         JULIA_UPDATE_AVAILABLE=1
       else
         echo "  ✅ Julia is up to date"
@@ -2243,11 +2435,12 @@ if [ "$UPDATE_MODE" = "1" ]; then
   echo ""
   echo "📊 COMPREHENSIVE TOOLCHAIN SUMMARY:"
   echo "-----------------------------------"
-  [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 Python update available" || echo "  ✅ Python current"
-  [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 pip/pip-tools update available" || echo "  ✅ pip/pip-tools current"
-  [ "$R_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 R update available" || echo "  ✅ R current"
-  [ "$JULIA_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 Julia update available" || echo "  ✅ Julia current"
-  [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 System dependencies update available" || echo "  ✅ System dependencies current"
+  [ "$PYENV_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 pyenv update available (will be auto-updated)" || echo "  ✅ pyenv current"
+  [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 Python update available (will be auto-updated)" || echo "  ✅ Python current"
+  [ "$PIP_UPDATE_AVAILABLE" = "1" ] || [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 pip/pip-tools update available (will be auto-updated)" || echo "  ✅ pip/pip-tools current"
+  [ "$R_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 R update available (will be auto-updated)" || echo "  ✅ R current"
+  [ "$JULIA_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 Julia update available (will be auto-updated)" || echo "  ✅ Julia current"
+  [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 System dependencies update available (will be auto-updated)" || echo "  ✅ System dependencies current"
 
   # ============================================================================
   # PART 2: PACKAGE VERSION CHECKING
@@ -2424,35 +2617,42 @@ if [ "$UPDATE_MODE" = "1" ]; then
 
   # Only offer to apply updates if ALL tests passed
   if [ "$PACKAGES_TEST_PASSED" = "1" ] && [ "$TOOLCHAIN_SAFE" = "1" ]; then
-    echo "✅ ALL TESTS PASSED - Safe to apply updates!"
+    echo "✅ ALL TESTS PASSED - Safe to apply ALL updates!"
     echo ""
-    echo "💡 Summary of available automatic updates:"
+    echo "💡 Summary of available AUTOMATIC updates:"
+    [ "$PYENV_UPDATE_AVAILABLE" = "1" ] && echo "   • pyenv: $CURRENT_PYENV_VERSION → $LATEST_PYENV_VERSION (automatic)"
     [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "   • Python: $CURRENT_PYTHON → $LATEST_PYTHON (automatic)"
-    [ "$PIP_UPDATE_AVAILABLE" = "1" ] || [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip: $CURRENT_PIP → $NEW_PIP_VERSION (automatic)"
+    [ "$PIP_UPDATE_AVAILABLE" = "1" ] || [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip: $CURRENT_PIP → ${NEW_PIP_VERSION:-latest} (automatic)"
     [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip-tools: $CURRENT_PIP_TOOLS → $NEW_PIP_TOOLS_VERSION (automatic)"
+    [ "$R_UPDATE_AVAILABLE" = "1" ] && echo "   • R: $CURRENT_R → $LATEST_R (automatic)"
+    [ "$JULIA_UPDATE_AVAILABLE" = "1" ] && echo "   • Julia: $CURRENT_JULIA → $LATEST_JULIA (automatic)"
+    [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ] && echo "   • System dependencies: libgit2, libpq, openssl@3 (automatic)"
     echo "   • Python packages: Update smart constraints to latest compatible versions (automatic)"
-
-    # Show manual updates needed
-    MANUAL_UPDATES_NEEDED=0
-    if [ "$R_UPDATE_AVAILABLE" = "1" ] || [ "$JULIA_UPDATE_AVAILABLE" = "1" ] || [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ]; then
-      MANUAL_UPDATES_NEEDED=1
-      echo ""
-      echo "💡 Additional updates available (require manual upgrade):"
-      [ "$R_UPDATE_AVAILABLE" = "1" ] && echo "   • R: $CURRENT_R → $LATEST_R (run: brew upgrade r)"
-      [ "$JULIA_UPDATE_AVAILABLE" = "1" ] && echo "   • Julia: $CURRENT_JULIA → $LATEST_JULIA (run: brew upgrade julia)"
-      [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ] && echo "   • System dependencies (run: brew upgrade libgit2 libpq openssl@3)"
-    fi
 
     echo ""
 
     # Ask if user wants to apply updates
-    echo "❓ Apply automatic updates? (Python toolchain and packages)"
+    echo "❓ Apply ALL automatic updates? (All toolchain components and packages)"
     echo "   Press Ctrl+C to cancel, or wait 10 seconds to apply..."
     sleep 10
 
     echo ""
-    echo "📝 APPLYING UPDATES..."
-    echo "---------------------"
+    echo "📝 APPLYING ALL AUTOMATIC UPDATES..."
+    echo "------------------------------------"
+
+    # Apply pyenv update if available
+    if [ "$PYENV_UPDATE_AVAILABLE" = "1" ]; then
+      echo "🔧 Updating pyenv..."
+      set +e  # Temporarily disable exit on error
+      brew upgrade pyenv 2>&1
+      PYENV_UPGRADE_STATUS=$?
+      set -e
+      if [ $PYENV_UPGRADE_STATUS -eq 0 ]; then
+        echo "✅ pyenv updated to $(pyenv --version | awk '{print $2}')"
+      else
+        echo "⚠️  pyenv upgrade encountered issues, but continuing..."
+      fi
+    fi
 
     # Apply toolchain updates if available
     if [ "$PYTHON_UPDATE_AVAILABLE" = "1" ]; then
@@ -2482,20 +2682,53 @@ if [ "$UPDATE_MODE" = "1" ]; then
       fi
     fi
 
+    # Apply R update if available
+    if [ "$R_UPDATE_AVAILABLE" = "1" ]; then
+      echo "📊 Updating R..."
+      set +e
+      brew upgrade r 2>&1
+      R_UPGRADE_STATUS=$?
+      set -e
+      if [ $R_UPGRADE_STATUS -eq 0 ]; then
+        echo "✅ R updated to $(R --version 2>&1 | head -1 | awk '{print $3}')"
+      else
+        echo "⚠️  R upgrade encountered issues, but continuing..."
+      fi
+    fi
+
+    # Apply Julia update if available
+    if [ "$JULIA_UPDATE_AVAILABLE" = "1" ]; then
+      echo "📈 Updating Julia..."
+      set +e
+      brew upgrade julia 2>&1
+      JULIA_UPGRADE_STATUS=$?
+      set -e
+      if [ $JULIA_UPGRADE_STATUS -eq 0 ]; then
+        echo "✅ Julia updated to $(julia --version | awk '{print $3}')"
+      else
+        echo "⚠️  Julia upgrade encountered issues, but continuing..."
+      fi
+    fi
+
+    # Apply system dependencies updates if available
+    if [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ]; then
+      echo "🔧 Updating system dependencies..."
+      set +e
+      brew upgrade libgit2 libpq openssl@3 2>&1
+      DEPS_UPGRADE_STATUS=$?
+      set -e
+      if [ $DEPS_UPGRADE_STATUS -eq 0 ]; then
+        echo "✅ System dependencies updated"
+      else
+        echo "⚠️  Some system dependencies upgrades encountered issues, but continuing..."
+      fi
+    fi
+
     echo "📝 Applying package updates to requirements.in..."
     mv requirements.in.relaxed requirements.in
     echo "✅ Updated requirements.in with latest compatible versions"
     echo ""
-    echo "🎉 All automatic updates applied successfully!"
-
-    # Remind about manual updates if needed
-    if [ "$MANUAL_UPDATES_NEEDED" = "1" ]; then
-      echo ""
-      echo "⚠️  Manual updates still needed:"
-      [ "$R_UPDATE_AVAILABLE" = "1" ] && echo "   📊 R: brew upgrade r"
-      [ "$JULIA_UPDATE_AVAILABLE" = "1" ] && echo "   📈 Julia: brew upgrade julia"
-      [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ] && echo "   🔧 System deps: brew upgrade libgit2 libpq openssl@3"
-    fi
+    echo "🎉 ALL automatic updates applied successfully!"
   else
     echo "❌ TESTS FAILED - Cannot apply updates safely"
     echo ""

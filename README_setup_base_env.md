@@ -12,7 +12,7 @@ This script creates a comprehensive, reproducible data science environment with 
 
 **v3.2 refinements (6):** Stale lock detection, stage logging in lock file, smart constraints (8 packages), adaptive conflict resolution (2-tier), early exit optimization.
 
-**v3.1 enhancements (10):** Concurrent safety with file locking, memory monitoring, SHA256 hash integrity verification, enhanced error diagnostics with platform-specific fixes, CPU architecture detection (x86_64/ARM64), comprehensive build tool detection, structured logging with timestamps, parallel pip downloads, compressed snapshots, and atomic file operations.
+**v3.1 enhancements (10):** Concurrent safety with cross-platform file locking (using mkdir atomic operations, no external dependencies), memory monitoring, SHA256 hash integrity verification, enhanced error diagnostics with platform-specific fixes, CPU architecture detection (x86_64/ARM64), comprehensive build tool detection, structured logging with timestamps, parallel pip downloads, compressed snapshots, and atomic file operations.
 
 ## Quick Start
 
@@ -289,14 +289,18 @@ Options:
   --adaptive         Enable adaptive conflict resolution (slower but smarter)
   --no-adaptive      Disable adaptive resolution (faster, default)
   --force-reinstall  Force full reinstall by clearing .venv and caches
-  --update           Comprehensive check for latest versions of ALL components:
-                     • Homebrew, pyenv, Python, pip, pip-tools (automatic updates)
-                     • R, Julia, system dependencies (manual brew upgrade)
-                     • Python packages with conflict testing
+  --update           Comprehensive check and FULLY AUTONOMOUS update of ALL components:
+                     • Homebrew (auto-updated)
+                     • pyenv, Python, pip, pip-tools (fully automatic updates)
+                     • R, Julia (fully automatic brew upgrades)
+                     • System dependencies (fully automatic brew upgrades)
+                     • Python packages (automatic with conflict testing)
                      • Systematic smart constraint analysis (tests each individually)
-                     ONLY offers updates if ALL tests pass (maximum stability)
+                     ONLY applies updates if ALL tests pass (maximum stability)
                      (automatically enables adaptive mode for intelligent resolution)
-  --help             Show usage information
+  --clearlock        Clear any stale lock files and exit
+                     Use this if script fails with lock errors or race conditions
+  --help, -h         Show usage information
 
 Environment Variables:
   ENABLE_ADAPTIVE=1  Enable adaptive resolution
@@ -352,12 +356,12 @@ cd /path/to/your/script/directory
 
 ### Checking for Latest Versions (Update Mode)
 
-The `--update` flag provides **comprehensive environment checking** for Python, R, Julia, and system dependencies:
+The `--update` flag provides **comprehensive environment checking** for Python, R, Julia, and system dependencies with **FULLY AUTONOMOUS updates**:
 
 ```bash
 cd /path/to/your/script/directory
 
-# Comprehensive check of ALL environment components
+# Comprehensive check and automatic update of ALL environment components
 ./setup_base_env.sh --update
 ```
 
@@ -382,20 +386,21 @@ cd /path/to/your/script/directory
 4. **Creates temporary test environment** to check for conflicts
 5. **Reports findings** with detailed version comparisons
 
-**Part 3: Evaluate Results and Conditionally Apply Updates**
+**Part 3: Evaluate Results and Apply ALL Updates Automatically**
 1. **Evaluates ALL test results** (toolchain + packages)
-2. **ONLY offers updates if ALL tests pass** - maximum stability guarantee
-3. **Automatic updates** (if tests passed):
-   - Installs latest Python via pyenv
-   - Updates pip and pip-tools
-   - Updates requirements.in with latest package versions
-4. **Manual updates recommended** (shown after automatic updates):
-   - R: `brew upgrade r`
-   - Julia: `brew upgrade julia`
-   - System deps: `brew upgrade libgit2 libpq openssl@3`
-5. **Offers 10-second timeout** to cancel before applying
-6. **Refuses to apply** if any test fails, maintaining stability
-7. **Provides detailed reasoning** when updates cannot be applied
+2. **ONLY applies updates if ALL tests pass** - maximum stability guarantee
+3. **FULLY AUTONOMOUS automatic updates** (if ALL tests passed):
+   - **Upgrades pyenv** via Homebrew
+   - **Installs latest Python** via pyenv
+   - **Updates pip and pip-tools** to latest compatible versions
+   - **Updates R** via Homebrew (if installed)
+   - **Updates Julia** via Homebrew (if installed)
+   - **Updates system dependencies** (libgit2, libpq, openssl@3) via Homebrew
+   - **Updates requirements.in** with latest package versions
+4. **Offers 10-second timeout** to cancel before applying
+5. **Refuses to apply** if any test fails, maintaining stability
+6. **Provides detailed reasoning** when updates cannot be applied
+7. **Uses graceful error handling** for each component (continues on non-critical failures)
 
 **When to use:**
 - Monthly or quarterly comprehensive maintenance
@@ -403,7 +408,7 @@ cd /path/to/your/script/directory
 - When investigating if old conflicts have been resolved
 - Before starting new projects to ensure all components are current
 
-**Note:** Update mode automatically enables adaptive conflict resolution for intelligent handling of any issues.
+**Note:** Update mode automatically enables adaptive conflict resolution for intelligent handling of any issues. All updates preserve sophisticated features including smart constraints, performance optimizations, API key management, and security practices.
 
 ### Testing the Environment
 
@@ -437,7 +442,12 @@ Before making any changes, the script validates:
 7. **Build Tools**: On Linux, checks for gcc and make (needed for compiling Python packages)
 8. **Metadata Loading**: Reads existing installation history if available
 
-If any critical check fails, the script exits immediately before making changes.
+**Graceful Error Handling**: The script uses graceful error handling for dependency installation:
+- If system packages (libgit2, libpq, openssl@3) fail to install, you're prompted to continue or cancel
+- If pyenv fails to install, you're offered the option to continue with system Python
+- If pip/setuptools/wheel upgrades fail, you can choose to continue with existing versions
+- Failed installations show clear error messages and manual installation instructions
+- Only critical failures (like missing Homebrew or pip-tools) will stop the script
 
 **Cross-Platform Support:**
 - **macOS**: Uses Homebrew for system packages, df -g for disk space
@@ -673,6 +683,31 @@ cantera (thermodynamics/chemistry)
 
 ## Troubleshooting
 
+### 🔒 Lock File Issues
+
+**Script fails with "Unable to acquire lock" or "Another instance is running"**
+
+If the script was interrupted or crashed, a stale lock file may remain. To clear it:
+
+```bash
+# Clear the lock file
+./setup_base_env.sh --clearlock
+
+# This will show you information about the lock and remove it
+# If the process is still running, it will ask for confirmation
+```
+
+**What the lock file does:**
+- Prevents multiple instances from running simultaneously
+- Protects against concurrent modifications to the environment
+- Usually cleaned up automatically when script exits
+
+**When to use --clearlock:**
+- Script crashed or was interrupted (Ctrl+C)
+- Getting race condition errors
+- Seeing "Unable to acquire lock" messages
+- Lock file at `/tmp/setup_base_env.lock` exists but no script is running
+
 ### ⚠️ "Module not found" or Import Errors
 
 **MOST COMMON ISSUE: Environment not activated**
@@ -704,6 +739,44 @@ python -c "import pandas, numpy, sklearn; print('✅ Environment ready!')"
 **To deactivate:**
 ```bash
 deactivate
+```
+
+### Dependency Installation Issues
+
+**System packages fail to install:**
+
+The script will handle this gracefully and prompt you:
+```bash
+⚠️  Warning: Some system packages failed to install:
+   • libgit2
+
+💡 These packages are needed for compiling Python packages with C extensions.
+   The script will continue, but some packages may fail to install.
+
+📋 To install manually later:
+   brew install libgit2
+
+Continue anyway? (y/N):
+```
+
+You can:
+- Press `y` to continue (most Python packages will still work)
+- Press `N` to exit and fix the issue first
+
+**Common causes:**
+- Network connectivity issues
+- Package not available in your Homebrew repository
+- Insufficient permissions
+
+**Solutions:**
+```bash
+# Update Homebrew and retry
+brew update
+./setup_base_env.sh
+
+# Install packages manually
+brew install libgit2 libpq openssl@3
+./setup_base_env.sh
 ```
 
 ### Installation Fails
