@@ -2263,7 +2263,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
     LATEST_PYENV_VERSION=$(brew info pyenv | head -1 | awk '{print $3}')
     if [ "$CURRENT_PYENV_VERSION" != "$LATEST_PYENV_VERSION" ]; then
       echo "  📦 Update available: pyenv $CURRENT_PYENV_VERSION → $LATEST_PYENV_VERSION"
-      echo "  💡 Will be upgraded automatically if you choose to apply updates"
+      echo "  💡 Will be automatically upgraded"
       PYENV_UPDATE_AVAILABLE=1
     else
       echo "  ✅ pyenv is up to date"
@@ -2279,7 +2279,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
 
   if [ "$CURRENT_PYTHON" != "$LATEST_PYTHON" ]; then
     echo "  📦 Update available: Python $CURRENT_PYTHON → $LATEST_PYTHON"
-    echo "  💡 Will be installed automatically if you choose to apply updates"
+    echo "  💡 Will be automatically installed"
     PYTHON_UPDATE_AVAILABLE=1
   else
     echo "  ✅ Python is up to date"
@@ -2364,7 +2364,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
       LATEST_R=$(brew info r | head -1 | awk '{print $3}')
       if [ "$CURRENT_R" != "$LATEST_R" ]; then
         echo "  📦 Update available: R $CURRENT_R → $LATEST_R"
-        echo "  💡 Will be upgraded automatically if you choose to apply updates"
+        echo "  💡 Will be automatically upgraded"
         R_UPDATE_AVAILABLE=1
       else
         echo "  ✅ R is up to date"
@@ -2380,7 +2380,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
       LATEST_R=$(brew info r 2>/dev/null | head -1 | awk '{print $3}')
       if [ -n "$LATEST_R" ]; then
         echo "  📦 Available for installation: R $LATEST_R"
-        echo "  💡 Will be installed automatically if you choose to apply updates"
+        echo "  💡 Will be automatically installed"
         R_UPDATE_AVAILABLE=1
       else
         echo "  ⚠️  R not available via Homebrew"
@@ -2401,7 +2401,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
       LATEST_JULIA=$(brew info julia | head -1 | awk '{print $3}')
       if [ "$CURRENT_JULIA" != "$LATEST_JULIA" ]; then
         echo "  📦 Update available: Julia $CURRENT_JULIA → $LATEST_JULIA"
-        echo "  💡 Will be upgraded automatically if you choose to apply updates"
+        echo "  💡 Will be automatically upgraded"
         JULIA_UPDATE_AVAILABLE=1
       else
         echo "  ✅ Julia is up to date"
@@ -2417,7 +2417,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
       LATEST_JULIA=$(brew info julia 2>/dev/null | head -1 | awk '{print $3}')
       if [ -n "$LATEST_JULIA" ]; then
         echo "  📦 Available for installation: Julia $LATEST_JULIA"
-        echo "  💡 Will be installed automatically if you choose to apply updates"
+        echo "  💡 Will be automatically installed"
         JULIA_UPDATE_AVAILABLE=1
       else
         echo "  ⚠️  Julia not available via Homebrew"
@@ -2451,7 +2451,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
     done
 
     if [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ]; then
-      echo "  💡 Will be upgraded automatically if you choose to apply updates"
+      echo "  💡 Will be automatically upgraded"
     fi
   else
     echo "  ⚠️  Homebrew not available - cannot check system dependencies"
