@@ -211,7 +211,7 @@ cd /path/to/your/environments/directory
 
 📊 Current R: 4.3.2
   📦 Update available: R 4.3.2 → 4.4.0
-  💡 To update: brew upgrade r
+  💡 Will be upgraded automatically if you choose to apply updates
 
 📈 Current Julia: 1.10.0
   ✅ Julia is up to date
@@ -220,7 +220,7 @@ cd /path/to/your/environments/directory
   📦 libgit2: 1.7.1 → 1.8.0 (update available)
   ✅ libpq: 16.1 (up to date)
   ✅ openssl@3: 3.2.0 (up to date)
-  💡 To update: brew upgrade libgit2 libpq openssl@3
+  💡 Will be upgraded automatically if you choose to apply updates
 
 📊 COMPREHENSIVE TOOLCHAIN SUMMARY:
 -----------------------------------

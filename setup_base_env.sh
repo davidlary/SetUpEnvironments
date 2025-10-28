@@ -2426,7 +2426,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
     done
 
     if [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ]; then
-      echo "  💡 To update: brew upgrade libgit2 libpq openssl@3"
+      echo "  💡 Will be upgraded automatically if you choose to apply updates"
     fi
   else
     echo "  ⚠️  Homebrew not available - cannot check system dependencies"
