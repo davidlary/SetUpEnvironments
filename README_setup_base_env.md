@@ -292,7 +292,7 @@ Options:
   --update           Comprehensive check and FULLY AUTONOMOUS update of ALL components:
                      • Homebrew (auto-updated)
                      • pyenv, Python, pip, pip-tools (fully automatic updates)
-                     • R, Julia (fully automatic brew upgrades)
+                     • R, Julia (fully automatic install/upgrade via brew)
                      • System dependencies (fully automatic brew upgrades)
                      • Python packages (automatic with conflict testing)
                      • Systematic smart constraint analysis (tests each individually)
@@ -393,8 +393,8 @@ cd /path/to/your/script/directory
    - **Upgrades pyenv** via Homebrew
    - **Installs latest Python** via pyenv
    - **Updates pip and pip-tools** to latest compatible versions
-   - **Updates R** via Homebrew (if installed)
-   - **Updates Julia** via Homebrew (if installed)
+   - **Installs/Updates R** via Homebrew (installs if missing, upgrades if present)
+   - **Installs/Updates Julia** via Homebrew (installs if missing, upgrades if present)
    - **Updates system dependencies** (libgit2, libpq, openssl@3) via Homebrew
    - **Updates requirements.in** with latest package versions
 4. **Offers 10-second timeout** to cancel before applying

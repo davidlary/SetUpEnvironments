@@ -212,7 +212,7 @@ for arg in "$@"; do
       echo "  --update           Comprehensive check and FULLY AUTONOMOUS update of ALL components:"
       echo "                     • Homebrew (auto-updated)"
       echo "                     • pyenv, Python, pip, pip-tools (fully automatic updates)"
-      echo "                     • R, Julia (fully automatic brew upgrades)"
+      echo "                     • R, Julia (fully automatic install/upgrade via brew)"
       echo "                     • System dependencies (fully automatic brew upgrades)"
       echo "                     • Python packages (automatic with conflict testing)"
       echo "                     ONLY applies updates if ALL tests pass (maximum stability)"
@@ -2375,7 +2375,19 @@ if [ "$UPDATE_MODE" = "1" ]; then
     fi
   else
     echo "📊 R: Not installed"
-    R_UPDATE_AVAILABLE=0
+    if command -v brew &>/dev/null; then
+      LATEST_R=$(brew info r 2>/dev/null | head -1 | awk '{print $3}')
+      if [ -n "$LATEST_R" ]; then
+        echo "  📦 Available for installation: R $LATEST_R"
+        echo "  💡 Will be installed automatically if you choose to apply updates"
+        R_UPDATE_AVAILABLE=1
+      else
+        echo "  ⚠️  R not available via Homebrew"
+        R_UPDATE_AVAILABLE=0
+      fi
+    else
+      R_UPDATE_AVAILABLE=0
+    fi
   fi
 
   # Check Julia version
@@ -2400,7 +2412,19 @@ if [ "$UPDATE_MODE" = "1" ]; then
     fi
   else
     echo "📈 Julia: Not installed"
-    JULIA_UPDATE_AVAILABLE=0
+    if command -v brew &>/dev/null; then
+      LATEST_JULIA=$(brew info julia 2>/dev/null | head -1 | awk '{print $3}')
+      if [ -n "$LATEST_JULIA" ]; then
+        echo "  📦 Available for installation: Julia $LATEST_JULIA"
+        echo "  💡 Will be installed automatically if you choose to apply updates"
+        JULIA_UPDATE_AVAILABLE=1
+      else
+        echo "  ⚠️  Julia not available via Homebrew"
+        JULIA_UPDATE_AVAILABLE=0
+      fi
+    else
+      JULIA_UPDATE_AVAILABLE=0
+    fi
   fi
 
   # Check system dependencies
@@ -2438,8 +2462,24 @@ if [ "$UPDATE_MODE" = "1" ]; then
   [ "$PYENV_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 pyenv update available (will be auto-updated)" || echo "  ✅ pyenv current"
   [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 Python update available (will be auto-updated)" || echo "  ✅ Python current"
   [ "$PIP_UPDATE_AVAILABLE" = "1" ] || [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 pip/pip-tools update available (will be auto-updated)" || echo "  ✅ pip/pip-tools current"
-  [ "$R_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 R update available (will be auto-updated)" || echo "  ✅ R current"
-  [ "$JULIA_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 Julia update available (will be auto-updated)" || echo "  ✅ Julia current"
+  if [ "$R_UPDATE_AVAILABLE" = "1" ]; then
+    if command -v R &>/dev/null; then
+      echo "  🔄 R update available (will be auto-updated)"
+    else
+      echo "  ➕ R installation available (will be auto-installed)"
+    fi
+  else
+    echo "  ✅ R current"
+  fi
+  if [ "$JULIA_UPDATE_AVAILABLE" = "1" ]; then
+    if command -v julia &>/dev/null; then
+      echo "  🔄 Julia update available (will be auto-updated)"
+    else
+      echo "  ➕ Julia installation available (will be auto-installed)"
+    fi
+  else
+    echo "  ✅ Julia current"
+  fi
   [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ] && echo "  🔄 System dependencies update available (will be auto-updated)" || echo "  ✅ System dependencies current"
 
   # ============================================================================
@@ -2686,8 +2726,16 @@ if [ "$UPDATE_MODE" = "1" ]; then
     if [ "$R_UPDATE_AVAILABLE" = "1" ]; then
       echo "📊 Updating R..."
       set +e
-      brew upgrade r 2>&1
-      R_UPGRADE_STATUS=$?
+      # Check if R is already installed
+      if brew list r &>/dev/null; then
+        brew upgrade r 2>&1
+        R_UPGRADE_STATUS=$?
+      else
+        # R not installed, install it
+        echo "   R not currently installed, installing..."
+        brew install r 2>&1
+        R_UPGRADE_STATUS=$?
+      fi
       set -e
       if [ $R_UPGRADE_STATUS -eq 0 ]; then
         echo "✅ R updated to $(R --version 2>&1 | head -1 | awk '{print $3}')"
@@ -2700,8 +2748,16 @@ if [ "$UPDATE_MODE" = "1" ]; then
     if [ "$JULIA_UPDATE_AVAILABLE" = "1" ]; then
       echo "📈 Updating Julia..."
       set +e
-      brew upgrade julia 2>&1
-      JULIA_UPGRADE_STATUS=$?
+      # Check if Julia is already installed
+      if brew list julia &>/dev/null; then
+        brew upgrade julia 2>&1
+        JULIA_UPGRADE_STATUS=$?
+      else
+        # Julia not installed, install it
+        echo "   Julia not currently installed, installing..."
+        brew install julia 2>&1
+        JULIA_UPGRADE_STATUS=$?
+      fi
       set -e
       if [ $JULIA_UPGRADE_STATUS -eq 0 ]; then
         echo "✅ Julia updated to $(julia --version | awk '{print $3}')"

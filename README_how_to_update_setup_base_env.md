@@ -155,7 +155,7 @@ cd /path/to/your/environments/directory
 - **Part 0: Homebrew Update** - Updates Homebrew package database first
 - **Part 1: Comprehensive Toolchain Check** - Checks ALL environment components:
   - pyenv, Python, pip, pip-tools (FULLY automatic updates)
-  - R, Julia (FULLY automatic brew upgrades)
+  - R, Julia (FULLY automatic install/upgrade via brew)
   - System dependencies: libgit2, libpq, openssl@3 (FULLY automatic brew upgrades)
 - **Part 2: Python Package Check** - Checks all Python packages for latest versions
 - **Part 3: Conflict Testing and AUTOMATIC Updates** - Tests and applies updates:
