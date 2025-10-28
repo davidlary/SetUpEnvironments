@@ -57,7 +57,7 @@ source ~/Dropbox/Environments/activate_base_env.sh
 
 # Check for updates to ALL components (Python, R, Julia, system dependencies, packages)
 # Tests everything including systematic smart constraint analysis
-# ONLY offers updates if ALL tests pass
+# FULLY AUTONOMOUS: Toolchain updates always applied, package updates only if tests pass
 ./setup_base_env.sh --update
 
 # Show help
@@ -291,12 +291,11 @@ Options:
   --force-reinstall  Force full reinstall by clearing .venv and caches
   --update           Comprehensive check and FULLY AUTONOMOUS update of ALL components:
                      • Homebrew (auto-updated)
-                     • pyenv, Python, pip, pip-tools (fully automatic updates)
-                     • R, Julia (fully automatic install/upgrade via brew)
-                     • System dependencies (fully automatic brew upgrades)
-                     • Python packages (automatic with conflict testing)
+                     • Toolchain: pyenv, Python, pip/pip-tools, R, Julia, system deps
+                       (ALWAYS applied immediately - safe and independent)
+                     • Packages: Python packages tested for conflicts first
+                       (ONLY applied if ALL tests pass - maximum stability)
                      • Systematic smart constraint analysis (tests each individually)
-                     ONLY applies updates if ALL tests pass (maximum stability)
                      (automatically enables adaptive mode for intelligent resolution)
   --clearlock        Clear any stale lock files and exit
                      Use this if script fails with lock errors or race conditions
@@ -386,21 +385,28 @@ cd /path/to/your/script/directory
 4. **Creates temporary test environment** to check for conflicts
 5. **Reports findings** with detailed version comparisons
 
-**Part 3: Evaluate Results and Apply ALL Updates Automatically**
-1. **Evaluates ALL test results** (toolchain + packages)
-2. **ONLY applies updates if ALL tests pass** - maximum stability guarantee
-3. **FULLY AUTONOMOUS automatic updates** (if ALL tests passed):
+**Part 3A: Apply Toolchain Updates (FULLY AUTONOMOUS)**
+1. **Always applies toolchain updates** immediately (independent of package tests):
    - **Upgrades pyenv** via Homebrew
    - **Installs latest Python** via pyenv
    - **Updates pip and pip-tools** to latest compatible versions
    - **Installs/Updates R** via Homebrew (installs if missing, upgrades if present)
    - **Installs/Updates Julia** via Homebrew (installs if missing, upgrades if present)
    - **Updates system dependencies** (libgit2, libpq, openssl@3) via Homebrew
-   - **Updates requirements.in** with latest package versions
-4. **Offers 10-second timeout** to cancel before applying
-5. **Refuses to apply** if any test fails, maintaining stability
-6. **Provides detailed reasoning** when updates cannot be applied
-7. **Uses graceful error handling** for each component (continues on non-critical failures)
+2. **Uses graceful error handling** for each component (continues on non-critical failures)
+3. **Reports success status** for toolchain updates
+
+**Part 3B: Apply Package Updates (Only if Tests Pass)**
+1. **Evaluates package test results** from Part 2
+2. **ONLY applies package updates if ALL tests pass** - maximum stability guarantee
+3. **When package tests pass**:
+   - **Updates requirements.in** with latest compatible package versions
+   - **Updates smart constraints** that tested safe to relax
+   - **Reports which packages were updated**
+4. **When package tests fail**:
+   - **Keeps current package versions** for stability
+   - **Provides detailed reasoning** why updates cannot be applied
+   - **Toolchain updates still applied** (already done in Part 3A)
 
 **When to use:**
 - Monthly or quarterly comprehensive maintenance

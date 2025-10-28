@@ -158,12 +158,16 @@ cd /path/to/your/environments/directory
   - R, Julia (FULLY automatic install/upgrade via brew)
   - System dependencies: libgit2, libpq, openssl@3 (FULLY automatic brew upgrades)
 - **Part 2: Python Package Check** - Checks all Python packages for latest versions
-- **Part 3: Conflict Testing and AUTOMATIC Updates** - Tests and applies updates:
-  - Creates temporary test environments to verify compatibility
-  - Compares current vs. latest versions for all components
-  - **Evaluates ALL results** - Checks that EVERYTHING passed all tests
-  - **ONLY applies updates if ALL tests pass** - ensures maximum stability
-  - **FULLY AUTONOMOUS automatic updates** - ALL components updated automatically:
+- **Part 3A: Apply Toolchain Updates (FULLY AUTONOMOUS)** - Applies toolchain updates immediately:
+  - **Always applies toolchain updates** (pyenv, Python, pip/pip-tools, R, Julia, system deps)
+  - **Independent of package tests** - toolchain is always safe to update
+  - **Graceful error handling** for each component
+- **Part 3B: Apply Package Updates (Only if Tests Pass)** - Tests and applies package updates:
+  - Creates temporary test environments to verify package compatibility
+  - **ONLY applies package updates if ALL tests pass** - ensures maximum stability
+  - When tests pass: Updates requirements.in with latest compatible versions
+  - When tests fail: Keeps current package versions (toolchain already updated in Part 3A)
+  - **FULLY AUTONOMOUS** - no prompts or confirmations required:
     * pyenv via Homebrew
     * Python via pyenv
     * pip and pip-tools

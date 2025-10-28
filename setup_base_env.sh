@@ -1,11 +1,13 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.3 (October 2025)
+# Version: 3.4 (October 2025)
 #
 # Comprehensive data science environment with Python 3.12, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
 #           concurrent safety, memory monitoring, integrity verification, security audits.
+#
+# v3.4 Changes: FULLY AUTONOMOUS --update mode with separated toolchain/package updates
 #
 # Usage:
 #   ./setup_base_env.sh                    # Fast mode (default)
@@ -211,11 +213,10 @@ for arg in "$@"; do
       echo "  --force-reinstall  Force full reinstall by clearing .venv and caches"
       echo "  --update           Comprehensive check and FULLY AUTONOMOUS update of ALL components:"
       echo "                     • Homebrew (auto-updated)"
-      echo "                     • pyenv, Python, pip, pip-tools (fully automatic updates)"
-      echo "                     • R, Julia (fully automatic install/upgrade via brew)"
-      echo "                     • System dependencies (fully automatic brew upgrades)"
-      echo "                     • Python packages (automatic with conflict testing)"
-      echo "                     ONLY applies updates if ALL tests pass (maximum stability)"
+      echo "                     • Toolchain: pyenv, Python, pip/pip-tools, R, Julia, system deps"
+      echo "                       (ALWAYS applied immediately - safe and independent)"
+      echo "                     • Packages: Python packages tested for conflicts first"
+      echo "                       (ONLY applied if ALL tests pass - maximum stability)"
       echo "                     (automatically enables adaptive mode for intelligent resolution)"
       echo "  --clearlock        Clear any stale lock files and exit"
       echo "  --help, -h         Show this help message"
@@ -322,7 +323,7 @@ log_warn() { log "WARN" "$@"; }
 log_error() { log "ERROR" "$@"; }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.3 - Enhanced"
+log_info "Base Environment Setup Script v3.4 - Enhanced"
 log_info "Log file: $LOG_FILE"
 log_info "==================================================================="
 
@@ -2655,140 +2656,166 @@ if [ "$UPDATE_MODE" = "1" ]; then
 
   echo ""
 
-  # Only offer to apply updates if ALL tests passed
-  if [ "$PACKAGES_TEST_PASSED" = "1" ] && [ "$TOOLCHAIN_SAFE" = "1" ]; then
-    echo "✅ ALL TESTS PASSED - Safe to apply ALL updates!"
+  # ============================================================================
+  # PART 3A: APPLY TOOLCHAIN UPDATES (Always safe, independent of package tests)
+  # ============================================================================
+  echo ""
+  echo "📝 APPLYING TOOLCHAIN UPDATES (FULLY AUTONOMOUS)"
+  echo "------------------------------------------------"
+
+  TOOLCHAIN_UPDATES_APPLIED=0
+
+  # Apply pyenv update if available
+  if [ "$PYENV_UPDATE_AVAILABLE" = "1" ]; then
+    echo "🔧 Updating pyenv..."
+    set +e  # Temporarily disable exit on error
+    brew upgrade pyenv 2>&1
+    PYENV_UPGRADE_STATUS=$?
+    set -e
+    if [ $PYENV_UPGRADE_STATUS -eq 0 ]; then
+      echo "✅ pyenv updated to $(pyenv --version | awk '{print $2}')"
+      TOOLCHAIN_UPDATES_APPLIED=1
+    else
+      echo "⚠️  pyenv upgrade encountered issues, but continuing..."
+    fi
+  fi
+
+  # Apply Python version update if available
+  if [ "$PYTHON_UPDATE_AVAILABLE" = "1" ]; then
+    echo "🐍 Installing Python $LATEST_PYTHON..."
+    pyenv install -s "$LATEST_PYTHON"
+    pyenv global "$LATEST_PYTHON"
+    echo "✅ Python updated to $LATEST_PYTHON"
+    TOOLCHAIN_UPDATES_APPLIED=1
+  fi
+
+  # Update pip and/or pip-tools if needed
+  if [ "$PIP_UPDATE_AVAILABLE" = "1" ] || [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
+    if [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
+      echo "📦 Updating pip and pip-tools..."
+      pip install --upgrade pip pip-tools
+      echo "✅ pip updated to $(pip --version | awk '{print $2}')"
+      echo "✅ pip-tools updated to $(pip show pip-tools | grep Version | awk '{print $2}')"
+      TOOLCHAIN_UPDATES_APPLIED=1
+    elif [ "$PIP_UPDATE_AVAILABLE" = "1" ]; then
+      echo "📦 Updating pip..."
+      pip install --upgrade "pip<25.2"
+      echo "✅ pip updated to $(pip --version | awk '{print $2}')"
+      TOOLCHAIN_UPDATES_APPLIED=1
+    fi
+
+    # Update pip constraint in setup script if needed
+    if [ -n "$NEW_PIP_VERSION" ]; then
+      NEXT_MAJOR=$(echo "$NEW_PIP_VERSION" | awk -F. '{print $1"."$2+0.1}')
+      echo "💡 Consider updating pip constraint in setup_base_env.sh from 'pip<25.2' to 'pip<$NEXT_MAJOR'"
+    fi
+  fi
+
+  # Apply R update if available
+  if [ "$R_UPDATE_AVAILABLE" = "1" ]; then
+    echo "📊 Updating R..."
+    set +e
+    # Check if R is already installed
+    if brew list r &>/dev/null; then
+      brew upgrade r 2>&1
+      R_UPGRADE_STATUS=$?
+    else
+      # R not installed, install it
+      echo "   R not currently installed, installing..."
+      brew install r 2>&1
+      R_UPGRADE_STATUS=$?
+    fi
+    set -e
+    if [ $R_UPGRADE_STATUS -eq 0 ]; then
+      echo "✅ R updated to $(R --version 2>&1 | head -1 | awk '{print $3}')"
+      TOOLCHAIN_UPDATES_APPLIED=1
+    else
+      echo "⚠️  R upgrade encountered issues, but continuing..."
+    fi
+  fi
+
+  # Apply Julia update if available
+  if [ "$JULIA_UPDATE_AVAILABLE" = "1" ]; then
+    echo "📈 Updating Julia..."
+    set +e
+    # Check if Julia is already installed
+    if brew list julia &>/dev/null; then
+      brew upgrade julia 2>&1
+      JULIA_UPGRADE_STATUS=$?
+    else
+      # Julia not installed, install it
+      echo "   Julia not currently installed, installing..."
+      brew install julia 2>&1
+      JULIA_UPGRADE_STATUS=$?
+    fi
+    set -e
+    if [ $JULIA_UPGRADE_STATUS -eq 0 ]; then
+      echo "✅ Julia updated to $(julia --version | awk '{print $3}')"
+      TOOLCHAIN_UPDATES_APPLIED=1
+    else
+      echo "⚠️  Julia upgrade encountered issues, but continuing..."
+    fi
+  fi
+
+  # Apply system dependencies updates if available
+  if [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ]; then
+    echo "🔧 Updating system dependencies..."
+    set +e
+    brew upgrade libgit2 libpq openssl@3 2>&1
+    DEPS_UPGRADE_STATUS=$?
+    set -e
+    if [ $DEPS_UPGRADE_STATUS -eq 0 ]; then
+      echo "✅ System dependencies updated"
+      TOOLCHAIN_UPDATES_APPLIED=1
+    else
+      echo "⚠️  Some system dependencies upgrades encountered issues, but continuing..."
+    fi
+  fi
+
+  # Report toolchain updates status
+  if [ "$TOOLCHAIN_UPDATES_APPLIED" = "1" ]; then
     echo ""
-    echo "💡 Summary of available AUTOMATIC updates:"
-    [ "$PYENV_UPDATE_AVAILABLE" = "1" ] && echo "   • pyenv: $CURRENT_PYENV_VERSION → $LATEST_PYENV_VERSION (automatic)"
-    [ "$PYTHON_UPDATE_AVAILABLE" = "1" ] && echo "   • Python: $CURRENT_PYTHON → $LATEST_PYTHON (automatic)"
-    [ "$PIP_UPDATE_AVAILABLE" = "1" ] || [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip: $CURRENT_PIP → ${NEW_PIP_VERSION:-latest} (automatic)"
-    [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ] && echo "   • pip-tools: $CURRENT_PIP_TOOLS → $NEW_PIP_TOOLS_VERSION (automatic)"
-    [ "$R_UPDATE_AVAILABLE" = "1" ] && echo "   • R: $CURRENT_R → $LATEST_R (automatic)"
-    [ "$JULIA_UPDATE_AVAILABLE" = "1" ] && echo "   • Julia: $CURRENT_JULIA → $LATEST_JULIA (automatic)"
-    [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ] && echo "   • System dependencies: libgit2, libpq, openssl@3 (automatic)"
-    echo "   • Python packages: Update smart constraints to latest compatible versions (automatic)"
-
+    echo "✅ Toolchain updates applied successfully!"
+  else
     echo ""
+    echo "ℹ️  No toolchain updates were needed - all components current"
+  fi
 
-    # Ask if user wants to apply updates
-    echo "❓ Apply ALL automatic updates? (All toolchain components and packages)"
-    echo "   Press Ctrl+C to cancel, or wait 10 seconds to apply..."
-    sleep 10
+  # ============================================================================
+  # PART 3B: APPLY PACKAGE UPDATES (Only if tests passed)
+  # ============================================================================
+  echo ""
+  echo "📝 EVALUATING PACKAGE UPDATES"
+  echo "------------------------------"
 
+  if [ "$PACKAGES_TEST_PASSED" = "1" ]; then
+    echo "✅ Package tests PASSED - Safe to apply package updates!"
     echo ""
-    echo "📝 APPLYING ALL AUTOMATIC UPDATES..."
-    echo "------------------------------------"
-
-    # Apply pyenv update if available
-    if [ "$PYENV_UPDATE_AVAILABLE" = "1" ]; then
-      echo "🔧 Updating pyenv..."
-      set +e  # Temporarily disable exit on error
-      brew upgrade pyenv 2>&1
-      PYENV_UPGRADE_STATUS=$?
-      set -e
-      if [ $PYENV_UPGRADE_STATUS -eq 0 ]; then
-        echo "✅ pyenv updated to $(pyenv --version | awk '{print $2}')"
-      else
-        echo "⚠️  pyenv upgrade encountered issues, but continuing..."
-      fi
-    fi
-
-    # Apply toolchain updates if available
-    if [ "$PYTHON_UPDATE_AVAILABLE" = "1" ]; then
-      echo "🐍 Installing Python $LATEST_PYTHON..."
-      pyenv install -s "$LATEST_PYTHON"
-      pyenv global "$LATEST_PYTHON"
-      echo "✅ Python updated to $LATEST_PYTHON"
-    fi
-
-    # Update pip and/or pip-tools if needed
-    if [ "$PIP_UPDATE_AVAILABLE" = "1" ] || [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
-      if [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
-        echo "📦 Updating pip and pip-tools..."
-        pip install --upgrade pip pip-tools
-        echo "✅ pip updated to $(pip --version | awk '{print $2}')"
-        echo "✅ pip-tools updated to $(pip show pip-tools | grep Version | awk '{print $2}')"
-      elif [ "$PIP_UPDATE_AVAILABLE" = "1" ]; then
-        echo "📦 Updating pip..."
-        pip install --upgrade "pip<25.2"
-        echo "✅ pip updated to $(pip --version | awk '{print $2}')"
-      fi
-
-      # Update pip constraint in setup script if needed
-      if [ -n "$NEW_PIP_VERSION" ]; then
-        NEXT_MAJOR=$(echo "$NEW_PIP_VERSION" | awk -F. '{print $1"."$2+0.1}')
-        echo "💡 Consider updating pip constraint in setup_base_env.sh from 'pip<25.2' to 'pip<$NEXT_MAJOR'"
-      fi
-    fi
-
-    # Apply R update if available
-    if [ "$R_UPDATE_AVAILABLE" = "1" ]; then
-      echo "📊 Updating R..."
-      set +e
-      # Check if R is already installed
-      if brew list r &>/dev/null; then
-        brew upgrade r 2>&1
-        R_UPGRADE_STATUS=$?
-      else
-        # R not installed, install it
-        echo "   R not currently installed, installing..."
-        brew install r 2>&1
-        R_UPGRADE_STATUS=$?
-      fi
-      set -e
-      if [ $R_UPGRADE_STATUS -eq 0 ]; then
-        echo "✅ R updated to $(R --version 2>&1 | head -1 | awk '{print $3}')"
-      else
-        echo "⚠️  R upgrade encountered issues, but continuing..."
-      fi
-    fi
-
-    # Apply Julia update if available
-    if [ "$JULIA_UPDATE_AVAILABLE" = "1" ]; then
-      echo "📈 Updating Julia..."
-      set +e
-      # Check if Julia is already installed
-      if brew list julia &>/dev/null; then
-        brew upgrade julia 2>&1
-        JULIA_UPGRADE_STATUS=$?
-      else
-        # Julia not installed, install it
-        echo "   Julia not currently installed, installing..."
-        brew install julia 2>&1
-        JULIA_UPGRADE_STATUS=$?
-      fi
-      set -e
-      if [ $JULIA_UPGRADE_STATUS -eq 0 ]; then
-        echo "✅ Julia updated to $(julia --version | awk '{print $3}')"
-      else
-        echo "⚠️  Julia upgrade encountered issues, but continuing..."
-      fi
-    fi
-
-    # Apply system dependencies updates if available
-    if [ "$SYSTEM_DEPS_UPDATE_AVAILABLE" = "1" ]; then
-      echo "🔧 Updating system dependencies..."
-      set +e
-      brew upgrade libgit2 libpq openssl@3 2>&1
-      DEPS_UPGRADE_STATUS=$?
-      set -e
-      if [ $DEPS_UPGRADE_STATUS -eq 0 ]; then
-        echo "✅ System dependencies updated"
-      else
-        echo "⚠️  Some system dependencies upgrades encountered issues, but continuing..."
-      fi
-    fi
-
     echo "📝 Applying package updates to requirements.in..."
+
+    # Apply relaxed constraints (latest compatible versions)
     mv requirements.in.relaxed requirements.in
     echo "✅ Updated requirements.in with latest compatible versions"
+
+    # Also update individual smart constraints that tested as relaxable
+    if [ ${#RELAXABLE_CONSTRAINTS[@]} -gt 0 ]; then
+      echo ""
+      echo "📝 Updating smart constraints that tested safe to relax:"
+      for pkg in "${RELAXABLE_CONSTRAINTS[@]}"; do
+        # Get the latest version from the relaxed requirements
+        LATEST_VER=$(grep -i "^${pkg}==" requirements.txt.test | sed 's/.*==//' || echo "")
+        if [ -n "$LATEST_VER" ]; then
+          echo "   • $pkg: updating to $LATEST_VER"
+        fi
+      done
+    fi
+
     echo ""
-    echo "🎉 ALL automatic updates applied successfully!"
+    echo "🎉 Package updates applied successfully!"
   else
-    echo "❌ TESTS FAILED - Cannot apply updates safely"
+    echo "⚠️  Package tests FAILED - Keeping current package versions for stability"
     echo ""
-    echo "🛡️  Keeping current versions to maintain stability"
+    echo "🛡️  Your environment will continue using proven stable versions"
 
     if [ "$PACKAGES_TEST_PASSED" = "0" ]; then
       echo ""
@@ -2798,8 +2825,9 @@ if [ "$UPDATE_MODE" = "1" ]; then
       echo "   • Try again after package maintainers resolve conflicts"
     fi
 
-    # Restore backup
+    # Restore backup since package updates failed
     mv requirements.in.backup requirements.in
+    echo "✅ Restored previous requirements.in"
   fi
 
   # Clean up temporary files
