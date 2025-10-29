@@ -203,9 +203,9 @@ cd /path/to/your/environments/directory
 📦 Current pyenv: 2.3.35
   ✅ pyenv is up to date
 
-🐍 Current Python: 3.12.7
-🐍 Latest stable Python: 3.12.9
-  📦 Update available: Python 3.12.7 → 3.12.9
+🐍 Current Python: 3.12.9
+🐍 Latest stable Python: 3.13.9
+  📦 Update available: Python 3.12.9 → 3.13.9
   💡 Will be automatically installed
 
 📦 Current pip: 24.3.1 (pinned to <25.2 for pip-tools compatibility)
@@ -244,9 +244,9 @@ cd /path/to/your/environments/directory
 
 📊 VERSION COMPARISON:
 --------------------
-  📦 numpy: 1.20.0 → 2.1.0 (update available)
+  ✅ numpy: 2.2.6 (already latest - updated by adaptive system)
   ✅ ipywidgets: 8.1.7 (already latest)
-  📦 plotly: 5.15.0 → 5.24.1 (update available)
+  ✅ plotly: 6.3.1 (already latest - updated by adaptive system)
   ...
 
 🧪 Testing for conflicts with latest versions...
@@ -261,7 +261,7 @@ cd /path/to/your/environments/directory
 
 💡 Summary of available AUTOMATIC updates:
    • pyenv: 2.3.35 → 2.4.0 (automatic)
-   • Python: 3.12.7 → 3.12.9 (automatic)
+   • Python: 3.12.9 → 3.13.9 (automatic)
    • pip: 24.3.1 → 25.0.0 (automatic)
    • pip-tools: 7.5.1 → 7.6.2 (automatic)
    • R: 4.3.2 → 4.4.0 (automatic)
@@ -269,15 +269,15 @@ cd /path/to/your/environments/directory
    • System dependencies: libgit2, libpq, openssl@3 (automatic)
    • Python packages: Update smart constraints to latest compatible versions (automatic)
 
-❓ Apply ALL automatic updates? (All toolchain components and packages)
-   Press Ctrl+C to cancel, or wait 10 seconds to apply...
-
 📝 APPLYING ALL AUTOMATIC UPDATES...
 ------------------------------------
 🔧 Updating pyenv...
 ✅ pyenv updated to 2.4.0
-🐍 Installing Python 3.12.9...
-✅ Python updated to 3.12.9
+🐍 Installing Python 3.13.9...
+🔄 Recreating virtual environment with Python 3.13.9...
+✅ Virtual environment recreated with Python 3.13.9
+✅ pip and pip-tools installed in new venv
+✅ Python updated to 3.13.9
 📦 Updating pip and pip-tools...
 ✅ pip updated to 25.0.0
 ✅ pip-tools updated to 7.6.2
@@ -335,15 +335,15 @@ protobuf 6.33.0 has requirement ..., but you have protobuf 7.0.0
 
 ### Sophisticated System Features to Preserve
 
-1. **Smart Constraints (8 packages)**
-   - numpy>=1.20.0 (minimum version for scientific computing)
+1. **Smart Constraints (8 packages)** - Adaptive, tested versions as of Oct 2025
+   - numpy==2.2.6 (updated by adaptive system - v2.x tested safe)
    - ipywidgets==8.1.7 (Jupyter widget compatibility)
-   - geemap==0.36.6 (Google Earth Engine API compatibility - updated Oct 2025)
-   - plotly==5.15.0 (v6+ has breaking changes)
+   - geemap==0.36.6 (Google Earth Engine API compatibility)
+   - plotly==6.3.1 (updated by adaptive system - v6+ tested safe)
    - panel==1.8.2 (dashboard framework stability)
-   - bokeh==3.8.0 (historical stability issues)
+   - bokeh==3.8.0 (latest 3.x stable)
    - voila==0.5.11 (web app conversion stability)
-   - selenium==4.38.0 (browser automation latest stable - updated Oct 2025)
+   - selenium==4.38.0 (browser automation latest stable)
 
 2. **Performance Optimizations**
    - Early exit detection
@@ -513,24 +513,25 @@ Before considering the update complete, verify:
 - Now tests each constraint individually to identify which are still necessary
 
 **Implementation:**
-- Added PART 2.5 to --update mode (lines 1618-1691 in setup_base_env.sh)
+- Added PART 2.5 to --update mode (lines 2577-2665 in setup_base_env.sh v3.5)
 - Systematically tests each of the 8 smart constraints:
-  1. numpy>=1.20.0
+  1. numpy (current: 2.2.6, previously >=1.20.0)
   2. ipywidgets==8.1.7
-  3. geemap==0.36.4
-  4. plotly==5.15.0
+  3. geemap==0.36.6
+  4. plotly (current: 6.3.1, previously ==5.15.0)
   5. panel==1.8.2
   6. bokeh==3.8.0
   7. voila==0.5.11
-  8. selenium==4.36.0
+  8. selenium==4.38.0
 - For each constraint:
   - Creates test requirements with only that constraint relaxed
   - Compiles with pip-compile
   - Installs in temporary venv
   - Runs pip check for conflicts
   - Reports if constraint can be relaxed or is still necessary
+  - **v3.5+:** Actually applies updates when safe (not just reports)
 
-**Output Example:**
+**Output Example (after adaptive testing):**
 ```
 🔍 SYSTEMATIC SMART CONSTRAINT ANALYSIS
 ----------------------------------------
@@ -539,26 +540,26 @@ Testing each smart constraint individually to identify which are still necessary
 🧪 Testing numpy without version constraint...
   ✅ numpy: Constraint can potentially be RELAXED (no conflicts detected)
 
-🧪 Testing ipywidgets without version constraint...
-  ⚠️  ipywidgets: Constraint still NECESSARY (conflicts detected)
+🧪 Testing plotly without version constraint...
+  ✅ plotly: Constraint can potentially be RELAXED (no conflicts detected)
 
 [... continues for all 8 constraints ...]
 
 📊 SMART CONSTRAINT ANALYSIS RESULTS:
 -------------------------------------
 ✅ Constraints that can potentially be relaxed:
-   • numpy>=1.20.0
+   • numpy (will update to 2.2.6)
+   • plotly (will update to 6.3.1)
+   • ipywidgets (already at tested version 8.1.7)
+   • geemap (already at tested version 0.36.6)
+   • panel (already at tested version 1.8.2)
+   • bokeh (already at tested version 3.8.0)
+   • voila (already at tested version 0.5.11)
+   • selenium (already at tested version 4.38.0)
 
-⚠️  Constraints that should remain (still prevent conflicts):
-   • ipywidgets==8.1.7
-   • plotly==5.15.0
-   • bokeh==3.8.0
-   • geemap==0.36.4
-   • voila==0.5.11
-   • panel==1.8.2
-   • selenium==4.36.0
-
-💡 Recommendation: Review relaxable constraints and test in your specific use case before removing.
+📝 Updating smart constraints that tested safe to relax:
+   • numpy: updating to 2.2.6
+   • plotly: updating to 6.3.1
 ```
 
 **Benefits:**

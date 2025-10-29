@@ -277,7 +277,7 @@ ecmwf:
 ### Automatic Installation
 The script automatically installs:
 - **pyenv** (Python version management)
-- **Python 3.12** (via pyenv)
+- **Python 3.13** (via pyenv)
 - **pip-tools** (for requirements compilation)
 - **R** (via Homebrew on macOS)
 - **Julia** (via Homebrew on macOS)
@@ -556,26 +556,26 @@ This prevents bloating the repository while maintaining local safety features.
 
 ### Smart Constraints (8 packages) - Adaptive System
 
-**🔄 ADAPTIVE, NOT HARDCODED**: These are **default versions** for packages that historically caused conflicts. The system:
+**🔄 ADAPTIVE, NOT HARDCODED**: The system uses **fallback defaults** for packages that historically caused conflicts, but:
 - Reads ACTUAL versions from `requirements.in` (respects what you have)
 - Tests each constraint individually in `--update` mode (Part 2.5)
 - Updates constraints when tests prove newer versions work
 - Only applies defaults for packages WITHOUT constraints
 
-**Current Default Versions** (as of Oct 2025):
+**Default Fallback Versions** (used only when package has no constraint):
 
-| Package | Default Version | Reason |
-|---------|----------------|--------|
-| `numpy` | >=1.20.0 | Minimum version for core scientific computing compatibility |
-| `ipywidgets` | 8.1.7 | Jupyter widget compatibility with notebook ecosystem |
-| `geemap` | 0.36.6 | Google Earth Engine API compatibility (adaptive - tests updates) |
-| `plotly` | 5.15.0 | v6+ has breaking changes - pinned to stable 5.x (needs testing) |
-| `panel` | 1.8.2 | Dashboard framework stability |
-| `bokeh` | 3.8.0 | Historical stability issues with newer versions |
-| `voila` | 0.5.11 | Web app conversion stability with ipywidgets==8.1.7 |
-| `selenium` | 4.38.0 | Browser automation latest stable (adaptive - tests updates) |
+| Package | Fallback Default | Current After Adaptive Testing | Status |
+|---------|------------------|-------------------------------|---------|
+| `numpy` | >=1.20.0 | 2.2.6 | ✅ Updated - tested safe |
+| `ipywidgets` | 8.1.7 | 8.1.7 | ✅ Stable at default |
+| `geemap` | 0.36.6 | 0.36.6 | ✅ Stable at default |
+| `plotly` | 5.15.0 | 6.3.1 | ✅ Updated - v6+ tested safe |
+| `panel` | 1.8.2 | 1.8.2 | ✅ Stable at default |
+| `bokeh` | 3.8.0 | 3.8.0 | ✅ Stable at default |
+| `voila` | 0.5.11 | 0.5.11 | ✅ Stable at default |
+| `selenium` | 4.38.0 | 4.38.0 | ✅ Stable at default |
 
-**System Evolution**: Run `./setup_base_env.sh --update` to test if constraints can be relaxed. Part 2.5 systematically tests each package and reports which constraints are still necessary vs. which can be relaxed.
+**System Evolution**: Run `./setup_base_env.sh --update` to test if constraints can be relaxed. Part 2.5 systematically tests each package. When tests pass, updates are applied automatically (v3.5+).
 
 **Removed**: `jupyter-dash` (obsolete), `nose` (deprecated since 2015), `bqplot` and `jupyterlab` (no longer require pinning)
 
@@ -810,12 +810,12 @@ echo 'eval "$(pyenv init --path)"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-**Python 3.12 installation fails:**
+**Python 3.13 installation fails:**
 
 ```bash
 # Install build dependencies
 brew install openssl readline sqlite3 xz zlib
-pyenv install 3.12
+pyenv install 3.13
 ```
 
 **Dependency conflicts:**
@@ -844,7 +844,7 @@ pip install --force-reinstall <package-name>
 
 ```bash
 source base-env/.venv/bin/activate
-python -m ipykernel install --user --name base-env --display-name "Python 3.12 (base-env)"
+python -m ipykernel install --user --name base-env --display-name "Python 3.13 (base-env)"
 ```
 
 **R kernel issues:**
@@ -901,13 +901,13 @@ See `Old/README.md` for historical versions:
 **Reporting issues:**
 - Check `Old/README.md` for historical context
 - Review troubleshooting section above
-- Verify pyenv and Python 3.12 are working
+- Verify pyenv and Python 3.13 are working
 
 ---
 
-**Last Updated:** October 28, 2025
+**Last Updated:** October 29, 2025
 **Maintained by:** David Lary
-**Python Version:** 3.12
-**Total Packages:** Python (125 direct + dependencies), R (13), Julia (IJulia)
-**Version:** 3.4 with FULLY AUTONOMOUS updates
+**Python Version:** 3.13
+**Total Packages:** Python (208 direct + dependencies), R (13), Julia (IJulia)
+**Version:** 3.5 with FULLY AUTONOMOUS updates and persistent fix
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025)

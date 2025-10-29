@@ -1138,13 +1138,13 @@ log_info "Python version: $PYTHON_VERSION"
 echo "   Active Python: $PYTHON_VERSION"
 
 # Check for known incompatibilities
-if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 13 ]; then
-  echo "⚠️  Python 3.13+ detected - some packages may have compatibility issues"
-  echo "💡 Recommendation: Python 3.12 is most stable for this package set"
-  log_warn "Python 3.13+ detected - potential compatibility issues"
+if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 14 ]; then
+  echo "⚠️  Python 3.14+ detected - some packages may have compatibility issues"
+  echo "💡 Recommendation: Python 3.13 is most stable for this package set"
+  log_warn "Python 3.14+ detected - potential compatibility issues"
 elif [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -le 9 ]; then
   echo "⚠️  Python 3.9 or older detected - some packages require Python 3.10+"
-  echo "💡 Recommendation: Upgrade to Python 3.12 for best compatibility"
+  echo "💡 Recommendation: Upgrade to Python 3.13 for best compatibility"
   log_warn "Python 3.9 or older - may miss package features"
 else
   echo "✅ Python version compatible ($PYTHON_VERSION)"
