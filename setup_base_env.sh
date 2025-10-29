@@ -2361,7 +2361,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
     echo "📊 Current R: $CURRENT_R"
 
     if command -v brew &>/dev/null; then
-      LATEST_R=$(brew info r | head -1 | awk '{print $3}')
+      LATEST_R=$(brew info r-app | head -1 | awk '{print $3}')
       if [ "$CURRENT_R" != "$LATEST_R" ]; then
         echo "  📦 Update available: R $CURRENT_R → $LATEST_R"
         echo "  💡 Will be automatically upgraded"
@@ -2377,7 +2377,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
   else
     echo "📊 R: Not installed"
     if command -v brew &>/dev/null; then
-      LATEST_R=$(brew info r 2>/dev/null | head -1 | awk '{print $3}')
+      LATEST_R=$(brew info r-app 2>/dev/null | head -1 | awk '{print $3}')
       if [ -n "$LATEST_R" ]; then
         echo "  📦 Available for installation: R $LATEST_R"
         echo "  💡 Will be automatically installed"
@@ -2716,13 +2716,13 @@ if [ "$UPDATE_MODE" = "1" ]; then
     echo "📊 Updating R..."
     set +e
     # Check if R is already installed
-    if brew list r &>/dev/null; then
-      brew upgrade r 2>&1
+    if brew list r-app &>/dev/null; then
+      brew upgrade r-app 2>&1
       R_UPGRADE_STATUS=$?
     else
       # R not installed, install it
       echo "   R not currently installed, installing..."
-      brew install r 2>&1
+      brew install r-app 2>&1
       R_UPGRADE_STATUS=$?
     fi
     set -e
@@ -3148,7 +3148,7 @@ R_INSTALL_SUCCESS=1
 if ! command -v R &>/dev/null; then
   echo "📦 Installing R..."
   if [ "$OS_PLATFORM" = "macos" ]; then
-    if ! brew install --cask r 2>/dev/null; then
+    if ! brew install r-app 2>/dev/null; then
       echo "⚠️  R installation failed"
       R_INSTALL_SUCCESS=0
     fi
@@ -3197,7 +3197,7 @@ JULIA_INSTALL_SUCCESS=1
 if ! command -v julia &>/dev/null; then
   echo "📦 Installing Julia..."
   if [ "$OS_PLATFORM" = "macos" ]; then
-    if ! brew install --cask julia 2>/dev/null; then
+    if ! brew install julia 2>/dev/null; then
       echo "⚠️  Julia installation failed"
       JULIA_INSTALL_SUCCESS=0
     fi
