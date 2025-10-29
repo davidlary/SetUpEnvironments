@@ -1,13 +1,17 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.6 (October 2025)
+# Version: 3.7 (October 2025)
 #
 # Comprehensive data science environment with Python 3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
 #           concurrent safety, memory monitoring, integrity verification, security audits,
 #           comprehensive verbose logging.
 #
+# v3.7 Changes: Critical bug fixes
+#   - Fixed Python version mismatch detection (grep now anchored to "^version ")
+#   - Fixed hanging on snapshot creation (skip for venvs > 1GB)
+#   - Snapshot creation now checks venv size first to avoid delays
 # v3.6 Changes: Added comprehensive verbose logging for debugging
 #   - New --verbose flag for detailed command execution and timing
 #   - Enhanced log_verbose() function with command echoing
@@ -394,7 +398,7 @@ end_stage() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.6 - Enhanced with Verbose Logging"
+log_info "Base Environment Setup Script v3.7 - Bug Fixes (Python version check, snapshot hanging)"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -884,8 +888,18 @@ create_environment_snapshot() {
     echo ""
     echo "📸 ENVIRONMENT SNAPSHOT (ENHANCED)"
     echo "----------------------------------"
+
+    # Check venv size first to avoid hanging on large environments
+    VENV_SIZE_MB=$(du -sm .venv 2>/dev/null | awk '{print $1}')
+    if [ "$VENV_SIZE_MB" -gt 1000 ]; then
+      echo "⚠️  Virtual environment is large (${VENV_SIZE_MB}MB), skipping snapshot to avoid delays..."
+      echo "💡 Snapshot creation disabled for environments > 1GB"
+      log_info "Skipping snapshot creation: venv size ${VENV_SIZE_MB}MB exceeds 1GB threshold"
+      return 0
+    fi
+
     echo "📦 Creating compressed incremental backup of current environment..."
-    log_info "Creating environment snapshot: $SNAPSHOT_ARCHIVE"
+    log_info "Creating environment snapshot: $SNAPSHOT_ARCHIVE (venv size: ${VENV_SIZE_MB}MB)"
 
     # Check for previous snapshot for incremental backup
     PREV_SNAPSHOT=$(ls -t .venv.snapshot_*.tar.gz 2>/dev/null | head -1)
@@ -1225,7 +1239,7 @@ fi
 
 # Check if python version matches venv
 if [ -f ".venv/pyvenv.cfg" ]; then
-  VENV_PYTHON=$(grep "version" .venv/pyvenv.cfg | awk '{print $3}' | head -1)
+  VENV_PYTHON=$(grep "^version " .venv/pyvenv.cfg | awk '{print $3}' | head -1)
   if [ -n "$VENV_PYTHON" ] && [ "$VENV_PYTHON" != "$PYTHON_VERSION" ]; then
     echo "⚠️  Python version mismatch detected:"
     echo "   Active:    $PYTHON_VERSION"
