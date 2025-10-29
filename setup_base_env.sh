@@ -1,13 +1,19 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.7 (October 2025)
+# Version: 3.8 (October 2025)
 #
 # Comprehensive data science environment with Python 3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
 #           concurrent safety, memory monitoring, integrity verification, security audits,
-#           comprehensive verbose logging.
+#           comprehensive verbose logging, hybrid snapshot strategy.
 #
+# v3.8 Changes: Hybrid snapshot strategy for optimal performance
+#   - Small venvs (<500MB): Full compressed snapshot with pigz support
+#   - Large venvs (≥500MB): Fast metadata-only snapshot (~100KB)
+#   - Improved rollback: Handles both snapshot types intelligently
+#   - Enhanced cleanup: Manages both metadata and archive snapshots
+#   - Excludes *.pyc and __pycache__ for smaller archives
 # v3.7 Changes: Critical bug fixes
 #   - Fixed Python version mismatch detection (grep now anchored to "^version ")
 #   - Fixed hanging on snapshot creation (skip for venvs > 1GB)
@@ -398,7 +404,7 @@ end_stage() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.7 - Bug Fixes (Python version check, snapshot hanging)"
+log_info "Base Environment Setup Script v3.8 - Hybrid Snapshot Strategy"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -878,51 +884,85 @@ echo ""
 # ENVIRONMENT SNAPSHOT & ROLLBACK FUNCTIONS
 # ============================================================================
 
-# ENHANCEMENT 10: Incremental Compressed Backup
-# Function to create snapshot of current environment
-create_environment_snapshot() {
-  if [ -d ".venv" ]; then
-    SNAPSHOT_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    SNAPSHOT_ARCHIVE=".venv.snapshot_${SNAPSHOT_TIMESTAMP}.tar.gz"
+# ENHANCEMENT 10: Hybrid Snapshot Strategy
+# Function to create metadata-only snapshot (for large venvs)
+create_metadata_snapshot() {
+  local snapshot_timestamp="$1"
+  local venv_size_mb="$2"
+  local snapshot_dir=".venv.snapshot_${snapshot_timestamp}.metadata"
 
-    echo ""
-    echo "📸 ENVIRONMENT SNAPSHOT (ENHANCED)"
-    echo "----------------------------------"
+  echo "📦 Creating metadata-only snapshot (fast rollback for large venv: ${venv_size_mb}MB)..."
+  log_info "Creating metadata snapshot: $snapshot_dir (venv size: ${venv_size_mb}MB)"
 
-    # Check venv size first to avoid hanging on large environments
-    VENV_SIZE_MB=$(du -sm .venv 2>/dev/null | awk '{print $1}')
-    if [ "$VENV_SIZE_MB" -gt 1000 ]; then
-      echo "⚠️  Virtual environment is large (${VENV_SIZE_MB}MB), skipping snapshot to avoid delays..."
-      echo "💡 Snapshot creation disabled for environments > 1GB"
-      log_info "Skipping snapshot creation: venv size ${VENV_SIZE_MB}MB exceeds 1GB threshold"
-      return 0
-    fi
+  mkdir -p "$snapshot_dir"
 
-    echo "📦 Creating compressed incremental backup of current environment..."
-    log_info "Creating environment snapshot: $SNAPSHOT_ARCHIVE (venv size: ${VENV_SIZE_MB}MB)"
+  # Save critical files for rollback
+  .venv/bin/pip freeze > "$snapshot_dir/pip-freeze.txt" 2>/dev/null || true
+  [ -f "requirements.in" ] && cp requirements.in "$snapshot_dir/"
+  [ -f "requirements.txt" ] && cp requirements.txt "$snapshot_dir/"
+  [ -f "requirements.lock.txt" ] && cp requirements.lock.txt "$snapshot_dir/"
+  [ -f ".venv/pyvenv.cfg" ] && cp .venv/pyvenv.cfg "$snapshot_dir/"
 
-    # Check for previous snapshot for incremental backup
-    PREV_SNAPSHOT=$(ls -t .venv.snapshot_*.tar.gz 2>/dev/null | head -1)
-
-    # Create compressed archive with progress
-    if command -v pv &>/dev/null; then
-      # Use pv for progress bar if available
-      tar czf - .venv 2>/dev/null | pv -s $(du -sb .venv | awk '{print $1}') > "$SNAPSHOT_ARCHIVE"
-    else
-      tar czf "$SNAPSHOT_ARCHIVE" .venv 2>/dev/null
-    fi
-
-    if [ -f "$SNAPSHOT_ARCHIVE" ]; then
-      SNAPSHOT_SIZE=$(du -h "$SNAPSHOT_ARCHIVE" | awk '{print $1}')
-      echo "✅ Snapshot created: $SNAPSHOT_ARCHIVE ($SNAPSHOT_SIZE)"
-      log_info "Snapshot created successfully: $SNAPSHOT_SIZE"
-
-      # Record snapshot metadata
-      cat > "${SNAPSHOT_ARCHIVE}.meta" <<EOF
-snapshot_timestamp: $SNAPSHOT_TIMESTAMP
+  # Save metadata
+  cat > "$snapshot_dir/snapshot.meta" <<EOF
+snapshot_type: metadata_only
+snapshot_timestamp: $snapshot_timestamp
 snapshot_date: $(date '+%Y-%m-%d %H:%M:%S')
-snapshot_file: $SNAPSHOT_ARCHIVE
+venv_size_mb: $venv_size_mb
+python_version: $(python --version 2>&1 || echo "N/A")
+pip_version: $(pip --version 2>&1 | awk '{print $2}' || echo "N/A")
+packages_count: $(pip list 2>/dev/null | wc -l || echo "0")
+platform: $OS_PLATFORM
+architecture: $ARCH_OPTIMIZED
+rollback_note: Use 'pip-sync pip-freeze.txt' to restore this environment
+EOF
+
+  SNAPSHOT_SIZE=$(du -sh "$snapshot_dir" | awk '{print $1}')
+  echo "✅ Metadata snapshot created: $snapshot_dir ($SNAPSHOT_SIZE)"
+  log_info "Metadata snapshot created successfully: $SNAPSHOT_SIZE"
+  return 0
+}
+
+# Function to create full compressed snapshot (for small venvs)
+create_full_snapshot() {
+  local snapshot_timestamp="$1"
+  local venv_size_mb="$2"
+  local snapshot_archive=".venv.snapshot_${snapshot_timestamp}.tar.gz"
+
+  echo "📦 Creating full compressed backup (venv size: ${venv_size_mb}MB)..."
+  log_info "Creating full snapshot: $snapshot_archive (venv size: ${venv_size_mb}MB)"
+
+  # Check for previous snapshot for incremental backup
+  PREV_SNAPSHOT=$(ls -t .venv.snapshot_*.tar.gz 2>/dev/null | head -1)
+
+  # Create compressed archive with progress, excluding cache files
+  if command -v pigz &>/dev/null; then
+    # Use pigz for parallel compression if available (faster)
+    tar --exclude='*.pyc' --exclude='__pycache__' \
+        --use-compress-program=pigz -cf "$snapshot_archive" .venv 2>/dev/null
+  elif command -v pv &>/dev/null; then
+    # Use pv for progress bar if available
+    tar --exclude='*.pyc' --exclude='__pycache__' \
+        -czf - .venv 2>/dev/null | pv -s $(du -sb .venv | awk '{print $1}') > "$snapshot_archive"
+  else
+    # Standard compression
+    tar --exclude='*.pyc' --exclude='__pycache__' \
+        -czf "$snapshot_archive" .venv 2>/dev/null
+  fi
+
+  if [ -f "$snapshot_archive" ]; then
+    SNAPSHOT_SIZE=$(du -h "$snapshot_archive" | awk '{print $1}')
+    echo "✅ Full snapshot created: $snapshot_archive ($SNAPSHOT_SIZE)"
+    log_info "Full snapshot created successfully: $SNAPSHOT_SIZE"
+
+    # Save metadata
+    cat > "${snapshot_archive}.meta" <<EOF
+snapshot_type: full_archive
+snapshot_timestamp: $snapshot_timestamp
+snapshot_date: $(date '+%Y-%m-%d %H:%M:%S')
+snapshot_file: $snapshot_archive
 snapshot_size: $SNAPSHOT_SIZE
+venv_size_mb: $venv_size_mb
 python_version: $(python --version 2>&1 || echo "N/A")
 pip_version: $(pip --version 2>&1 | awk '{print $2}' || echo "N/A")
 packages_count: $(pip list 2>/dev/null | wc -l || echo "0")
@@ -931,22 +971,39 @@ platform: $OS_PLATFORM
 architecture: $ARCH_OPTIMIZED
 EOF
 
-      # Save current requirements for reference
-      if [ -f "requirements.txt" ]; then
-        gzip -c requirements.txt > "${SNAPSHOT_ARCHIVE}.requirements.txt.gz"
-      fi
-      if [ -f "requirements.lock.txt" ]; then
-        gzip -c requirements.lock.txt > "${SNAPSHOT_ARCHIVE}.requirements.lock.txt.gz"
-      fi
+    echo "📋 Snapshot metadata saved"
+    log_info "Snapshot metadata recorded"
+    return 0
+  else
+    echo "⚠️  Failed to create snapshot (non-fatal, continuing...)"
+    log_warn "Snapshot creation failed"
+    return 1
+  fi
+}
 
-      echo "📋 Snapshot metadata saved (compressed: $(du -h ${SNAPSHOT_ARCHIVE}.meta | awk '{print $1}'))"
-      log_info "Snapshot metadata recorded"
-      return 0
+# Main snapshot function with hybrid strategy
+create_environment_snapshot() {
+  if [ -d ".venv" ]; then
+    SNAPSHOT_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+    echo ""
+    echo "📸 ENVIRONMENT SNAPSHOT (HYBRID STRATEGY)"
+    echo "------------------------------------------"
+
+    # Check venv size to determine strategy
+    VENV_SIZE_MB=$(du -sm .venv 2>/dev/null | awk '{print $1}')
+    log_verbose "Venv size: ${VENV_SIZE_MB}MB"
+
+    if [ "$VENV_SIZE_MB" -ge 500 ]; then
+      echo "📊 Large environment detected (${VENV_SIZE_MB}MB) - using metadata-only snapshot"
+      echo "   💡 Fast rollback via pip-sync instead of full archive"
+      create_metadata_snapshot "$SNAPSHOT_TIMESTAMP" "$VENV_SIZE_MB"
     else
-      echo "⚠️  Failed to create snapshot (non-fatal, continuing...)"
-      log_warn "Snapshot creation failed"
-      return 1
+      echo "📊 Small environment detected (${VENV_SIZE_MB}MB) - using full snapshot"
+      create_full_snapshot "$SNAPSHOT_TIMESTAMP" "$VENV_SIZE_MB"
     fi
+
+    return $?
   else
     echo "ℹ️  No existing environment to snapshot (fresh install)"
     log_info "No environment to snapshot - fresh install"
@@ -954,53 +1011,127 @@ EOF
   fi
 }
 
-# Function to rollback to snapshot
+# Function to rollback to snapshot (supports both metadata and full snapshots)
 rollback_to_snapshot() {
-  # Find most recent snapshot
-  LATEST_SNAPSHOT=$(ls -td .venv.snapshot_* 2>/dev/null | head -1)
+  echo ""
+  echo "🔄 AUTOMATIC ROLLBACK"
+  echo "---------------------"
+  echo "⚠️  Installation failed - attempting rollback to previous state..."
 
-  if [ -n "$LATEST_SNAPSHOT" ] && [ -d "$LATEST_SNAPSHOT" ]; then
-    echo ""
-    echo "🔄 AUTOMATIC ROLLBACK"
-    echo "---------------------"
-    echo "⚠️  Installation failed - rolling back to previous state..."
+  # Find most recent snapshot (metadata dir, tar.gz, or legacy)
+  LATEST_METADATA=$(ls -td .venv.snapshot_*.metadata 2>/dev/null | head -1)
+  LATEST_ARCHIVE=$(ls -t .venv.snapshot_*.tar.gz 2>/dev/null | head -1)
+
+  # Try metadata snapshot first (faster)
+  if [ -n "$LATEST_METADATA" ] && [ -d "$LATEST_METADATA" ]; then
+    echo "📦 Found metadata snapshot: $LATEST_METADATA"
+    log_info "Attempting rollback from metadata snapshot: $LATEST_METADATA"
+
+    if [ -f "$LATEST_METADATA/pip-freeze.txt" ]; then
+      echo "🔄 Restoring environment from pip freeze file..."
+
+      # Recreate venv if it doesn't exist or is broken
+      if [ ! -f ".venv/bin/pip" ]; then
+        echo "🐍 Recreating virtual environment..."
+        python -m venv .venv
+        source .venv/bin/activate
+      fi
+
+      # Install pip-tools if needed
+      if ! .venv/bin/pip show pip-tools &>/dev/null; then
+        echo "📦 Installing pip-tools..."
+        .venv/bin/pip install pip-tools
+      fi
+
+      # Restore packages using pip-sync
+      if .venv/bin/pip-sync "$LATEST_METADATA/pip-freeze.txt"; then
+        echo "✅ Environment restored from metadata snapshot"
+        log_info "Rollback successful from metadata snapshot"
+
+        # Show snapshot info
+        if [ -f "$LATEST_METADATA/snapshot.meta" ]; then
+          echo ""
+          echo "📋 Restored environment details:"
+          cat "$LATEST_METADATA/snapshot.meta" | sed 's/^/   /'
+        fi
+
+        return 0
+      else
+        echo "⚠️  pip-sync failed, trying full archive if available..."
+        log_warn "Metadata rollback failed"
+      fi
+    fi
+  fi
+
+  # Try full archive snapshot
+  if [ -n "$LATEST_ARCHIVE" ] && [ -f "$LATEST_ARCHIVE" ]; then
+    echo "📦 Found full archive snapshot: $LATEST_ARCHIVE"
+    log_info "Attempting rollback from full archive: $LATEST_ARCHIVE"
 
     # Remove failed .venv
     if [ -d ".venv" ]; then
       rm -rf .venv
     fi
 
-    # Restore from snapshot
-    if mv "$LATEST_SNAPSHOT" .venv; then
-      echo "✅ Environment restored from snapshot"
+    # Extract archive
+    if tar -xzf "$LATEST_ARCHIVE" 2>/dev/null; then
+      echo "✅ Environment restored from full archive"
+      log_info "Rollback successful from full archive"
 
-      # Show what was restored
-      if [ -f ".venv/.snapshot_info" ]; then
+      # Show snapshot info
+      if [ -f "${LATEST_ARCHIVE}.meta" ]; then
         echo ""
         echo "📋 Restored environment details:"
-        cat ".venv/.snapshot_info" | sed 's/^/   /'
-        rm .venv/.snapshot_info
+        cat "${LATEST_ARCHIVE}.meta" | sed 's/^/   /'
       fi
 
       return 0
     else
-      echo "❌ Failed to restore from snapshot"
+      echo "❌ Failed to extract archive"
+      log_error "Archive extraction failed"
       return 1
     fi
-  else
-    echo "⚠️  No snapshot available for rollback"
-    return 1
   fi
+
+  echo "⚠️  No snapshot available for rollback"
+  log_warn "No snapshot available for rollback"
+  return 1
 }
 
-# Function to cleanup old snapshots (keep only most recent 2)
+# Function to cleanup old snapshots (keep only most recent 2 of each type)
 cleanup_old_snapshots() {
-  SNAPSHOT_COUNT=$(ls -d .venv.snapshot_* 2>/dev/null | wc -l)
+  echo ""
+  echo "🧹 SNAPSHOT CLEANUP"
+  echo "-------------------"
 
-  if [ "$SNAPSHOT_COUNT" -gt 2 ]; then
-    echo "🧹 Cleaning up old snapshots (keeping 2 most recent)..."
-    ls -td .venv.snapshot_* | tail -n +3 | xargs rm -rf
-    echo "✅ Old snapshots removed"
+  # Count and cleanup metadata snapshots
+  METADATA_COUNT=$(ls -d .venv.snapshot_*.metadata 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$METADATA_COUNT" -gt 2 ]; then
+    echo "🗑️  Cleaning up old metadata snapshots (keeping 2 most recent)..."
+    ls -td .venv.snapshot_*.metadata 2>/dev/null | tail -n +3 | while read snapshot; do
+      rm -rf "$snapshot"
+      log_info "Removed old metadata snapshot: $snapshot"
+    done
+    echo "   ✅ Removed $((METADATA_COUNT - 2)) old metadata snapshot(s)"
+  fi
+
+  # Count and cleanup full archive snapshots
+  ARCHIVE_COUNT=$(ls .venv.snapshot_*.tar.gz 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$ARCHIVE_COUNT" -gt 2 ]; then
+    echo "🗑️  Cleaning up old archive snapshots (keeping 2 most recent)..."
+    ls -t .venv.snapshot_*.tar.gz 2>/dev/null | tail -n +3 | while read snapshot; do
+      rm -f "$snapshot" "${snapshot}.meta"
+      log_info "Removed old archive snapshot: $snapshot"
+    done
+    echo "   ✅ Removed $((ARCHIVE_COUNT - 2)) old archive snapshot(s)"
+  fi
+
+  # Report total snapshot count
+  TOTAL_SNAPSHOTS=$(($(ls -d .venv.snapshot_*.metadata 2>/dev/null | wc -l) + $(ls .venv.snapshot_*.tar.gz 2>/dev/null | wc -l)))
+  if [ "$TOTAL_SNAPSHOTS" -gt 0 ]; then
+    TOTAL_SIZE=$(du -sh .venv.snapshot_* 2>/dev/null | awk '{sum+=$1} END {print sum}' || echo "0")
+    echo "📊 Current snapshots: $TOTAL_SNAPSHOTS total"
+    log_info "Snapshot cleanup complete: $TOTAL_SNAPSHOTS snapshots retained"
   fi
 }
 
@@ -3317,12 +3448,9 @@ record_installation_metadata "success"
 # Clean up old snapshots (keep 2 most recent)
 cleanup_old_snapshots
 
-# Remove the snapshot from this successful installation
-LATEST_SNAPSHOT=$(ls -td .venv.snapshot_* 2>/dev/null | head -1)
-if [ -n "$LATEST_SNAPSHOT" ]; then
-  echo "🧹 Removing snapshot from successful installation..."
-  rm -rf "$LATEST_SNAPSHOT"
-fi
+# Remove the snapshot from this successful installation (cleanup now handled by cleanup_old_snapshots)
+# This ensures we keep snapshots for rollback but clean up old ones
+log_info "Snapshot cleanup will be handled by cleanup_old_snapshots function"
 
 # Install R + IRkernel (cross-platform) - Enhancement 20: Graceful degradation
 echo ""
