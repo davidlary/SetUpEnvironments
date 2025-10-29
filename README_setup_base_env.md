@@ -1,14 +1,20 @@
 # Base Environment Setup Script
 
-**Version:** 3.5 (October 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.8 (October 2025) - **Enhanced Production-Grade Edition**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.13 (managed via pyenv)
 
 ## Overview
 
-This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, and performance optimizations.
+This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, and intelligent snapshot strategy.
 
-**✨ NEW in v3.5:** Fixed persistent update detection issues. Venv now recreates automatically when Python version updates (preventing repeated "Python update available" messages). Fixed version checks for pyenv, Julia, and system dependencies to detect actual version numbers instead of "stable" placeholder. Julia upgrade now handles both formula and cask installations correctly. Relaxable constraints identified by Part 2.5 testing now actually update in requirements.in (not just detect and report).
+**✨ NEW in v3.8:** Hybrid snapshot strategy for optimal performance. Small venvs (<500MB) use full compressed snapshots with pigz parallel compression. Large venvs (≥500MB) use fast metadata-only snapshots (~100KB, ~1 second). Intelligent rollback handles both types seamlessly. Enhanced cleanup manages both snapshot types.
+
+**v3.7:** Critical bug fixes. Fixed Python version mismatch detection (grep now anchored to "^version "). Fixed script hanging on snapshot creation (was compressing 1GB+ venvs for 30+ minutes). Snapshot now checks venv size first.
+
+**v3.6:** Added comprehensive verbose logging for debugging. New --verbose flag for detailed command execution and timing. Enhanced log_verbose() function with command echoing. Stage timing with start_stage() and end_stage(). Detailed Python venv recreation logging.
+
+**v3.5:** Fixed persistent update detection issues. Venv now recreates automatically when Python version updates (preventing repeated "Python update available" messages). Fixed version checks for pyenv, Julia, and system dependencies to detect actual version numbers instead of "stable" placeholder. Julia upgrade now handles both formula and cask installations correctly. Relaxable constraints identified by Part 2.5 testing now actually update in requirements.in (not just detect and report).
 
 **v3.4:** FULLY AUTONOMOUS --update mode with separated toolchain/package updates. Toolchain updates (pyenv, Python, pip/pip-tools, R, Julia, system deps) are ALWAYS applied immediately as they are safe and independent. Package updates are ONLY applied if ALL tests pass for maximum stability. **TRULY ADAPTIVE**: Smart constraints are now defaults, not hardcoded - Part 2.5 reads ACTUAL versions from requirements.in and tests them, generate_smart_constraints respects existing constraints instead of overwriting. System evolves based on conflict testing, not frozen versions. Correct Homebrew package names (r-app, julia).
 
@@ -103,11 +109,14 @@ source ~/Dropbox/Environments/activate_base_env.sh
 - **Pre-flight Checks**: Validates disk space (10GB minimum), internet connectivity, write permissions, and system dependencies before installation
 - **Operating System Detection**: Automatically detects macOS/Linux and adjusts commands accordingly
 - **Cross-Platform Compatibility**: Full support for macOS and Linux (Ubuntu, RHEL, Fedora, etc.)
-- **Environment Snapshots**: Automatic backup of working environment before making changes
-- **Automatic Rollback**: Restores previous state if installation fails
+- **Hybrid Snapshot Strategy** (v3.8):
+  - Small venvs (<500MB): Full compressed snapshot with pigz parallel compression
+  - Large venvs (≥500MB): Fast metadata-only snapshot (~100KB, ~1 second)
+  - Excludes *.pyc and __pycache__ for smaller archives
+- **Intelligent Rollback**: Handles both full archive and metadata snapshots seamlessly
 - **Post-installation Health Checks**: Validates Python interpreter, critical packages (numpy, pandas, matplotlib, jupyter), and Jupyter kernels
 - **Installation Metadata**: Tracks installation history, timestamps, package counts, conflict status, and OS information in `.env_metadata.json`
-- **Snapshot Management**: Automatically cleans up old snapshots (keeps 2 most recent) and removes snapshot after successful installation
+- **Smart Snapshot Management**: Automatically cleans up old snapshots (keeps 2 most recent of each type)
 
 ### 🔑 API Key Management
 Automatically configures environment variables for:
@@ -296,6 +305,7 @@ Options:
   --adaptive         Enable adaptive conflict resolution (slower but smarter)
   --no-adaptive      Disable adaptive resolution (faster, default)
   --force-reinstall  Force full reinstall by clearing .venv and caches
+  --verbose          Enable verbose logging with detailed command execution and timing
   --update           Comprehensive check and FULLY AUTONOMOUS update of ALL components:
                      • Homebrew (auto-updated)
                      • Toolchain: pyenv, Python, pip/pip-tools, R, Julia, system deps
@@ -309,7 +319,8 @@ Options:
   --help, -h         Show usage information
 
 Environment Variables:
-  ENABLE_ADAPTIVE=1  Enable adaptive resolution
+  ENABLE_ADAPTIVE=1    Enable adaptive resolution
+  VERBOSE_LOGGING=1    Enable verbose logging
 
 Default: Fast mode with basic conflict detection
 ```
@@ -468,41 +479,63 @@ Before making any changes, the script validates:
 - **Shell Detection**: Auto-detects zsh, bash, or sh and configures appropriately
 - **Platform-Specific Commands**: Automatically adjusts sed syntax and other commands based on OS
 
-### 📸 Environment Snapshots
+### 📸 Hybrid Snapshot Strategy (v3.8)
 
-**Automatic Backup Creation:**
-- Before making any changes, the script creates a complete backup of your current `.venv` directory
-- Snapshots are stored as `.venv.snapshot_YYYYMMDD_HHMMSS/`
-- Each snapshot includes metadata:
-  - Timestamp of snapshot creation
-  - Python and pip versions
-  - Package count
-  - Copy of `requirements.txt` and `requirements.lock.txt`
+**Intelligent Strategy Selection:**
+The script automatically chooses the optimal snapshot method based on your environment size:
+
+**Small Environments (<500MB):**
+- **Full compressed snapshot** (`.venv.snapshot_YYYYMMDD_HHMMSS.tar.gz`)
+- Uses pigz for parallel compression if available (4-5x faster)
+- Excludes *.pyc and __pycache__ for smaller archives
+- Complete instant rollback via tar extraction
+- Typical time: 2-5 minutes
+
+**Large Environments (≥500MB):**
+- **Metadata-only snapshot** (`.venv.snapshot_YYYYMMDD_HHMMSS.metadata/`)
+- Saves pip freeze, requirements files, pyvenv.cfg (~100KB)
+- Fast rollback via pip-sync (leverages pip cache)
+- Prevents 30+ minute hangs on 1GB+ environments
+- Typical time: ~1 second
 
 **Automatic Cleanup:**
-- Keeps only the 2 most recent snapshots to save disk space
-- Removes snapshot after successful installation (no longer needed)
-- Older snapshots are automatically pruned
+- Keeps 2 most recent of each snapshot type to save disk space
+- Automatically prunes older snapshots
+- Reports total snapshot count and size
 
-### 🔄 Automatic Rollback
+### 🔄 Intelligent Automatic Rollback (v3.8)
 
 **Error Detection:**
 - Error trapping is enabled during the installation phase (`set -e` and `trap`)
 - Any command failure triggers automatic rollback
 - Failures during pip-compile, wheel building, or package installation are caught
 
-**Rollback Process:**
-- Removes the failed `.venv` directory
-- Restores the most recent snapshot
-- Shows metadata about the restored environment
-- Exits with clear error message
+**Rollback Process (Handles Both Snapshot Types):**
+1. **Tries metadata snapshot first** (faster, uses pip-sync)
+   - Recreates venv if needed
+   - Restores packages via pip-sync from freeze file
+2. **Falls back to full archive** if available
+   - Removes failed .venv
+   - Extracts complete archive
+3. Shows metadata about the restored environment
+4. Exits with clear error message
 
 **Manual Rollback:**
 If you need to manually restore a snapshot:
 ```bash
 cd base-env
 rm -rf .venv
-mv .venv.snapshot_YYYYMMDD_HHMMSS .venv
+
+# For metadata snapshot:
+ls -td .venv.snapshot_*.metadata | head -1
+python -m venv .venv
+.venv/bin/pip install pip-tools
+.venv/bin/pip-sync .venv.snapshot_YYYYMMDD_HHMMSS.metadata/pip-freeze.txt
+
+# For full archive snapshot:
+ls -t .venv.snapshot_*.tar.gz | head -1
+tar -xzf .venv.snapshot_YYYYMMDD_HHMMSS.tar.gz
+
 source .venv/bin/activate
 ```
 
@@ -930,5 +963,5 @@ See `Old/README.md` for historical versions:
 **Maintained by:** David Lary
 **Python Version:** 3.13
 **Total Packages:** Python (146 direct + dependencies), R (13), Julia (IJulia)
-**Version:** 3.5 with FULLY AUTONOMOUS updates and comprehensive package coverage
+**Version:** 3.8 with hybrid snapshot strategy, verbose logging, and comprehensive bug fixes
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025), 21 new packages added from PedagogicalEngine requirements

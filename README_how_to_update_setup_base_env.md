@@ -1,11 +1,17 @@
 # How to Update and Maintain the Base Environment
 
-**Version:** 1.1 (October 2025) - Updated for setup_base_env.sh v3.5
+**Version:** 1.2 (October 2025) - Updated for setup_base_env.sh v3.8
 **Related Files:** `setup_base_env.sh`, `README_setup_base_env.md`
 
 ## Overview
 
 This guide provides a comprehensive, reusable prompt for adding packages and maintaining the sophisticated data science environment. Use this every time you need to update the environment to ensure consistency with the smart constraints and conflict resolution system.
+
+**v3.8 Update:** Hybrid snapshot strategy implemented. Small venvs (<500MB) use full compressed snapshots with pigz. Large venvs (≥500MB) use fast metadata-only snapshots (~100KB, ~1 second). Intelligent rollback handles both types seamlessly.
+
+**v3.7 Update:** Critical bug fixes. Python version mismatch detection corrected. Script no longer hangs on snapshot creation for large environments.
+
+**v3.6 Update:** Comprehensive verbose logging added with --verbose flag for detailed command execution and timing.
 
 **v3.5 Update:** The `--update` mode now fully applies updates that test as safe. Venv recreates automatically when Python version changes. Version checks correctly detect actual versions (not "stable" placeholders).
 
@@ -30,7 +36,11 @@ REQUIREMENTS:
    - Check if packages already exist in base-env/requirements.in
    - Verify current installation status in base-env/.venv
    - Run setup_base_env.sh with --adaptive flag for intelligent conflict resolution
-   - **SAFETY FEATURES**: Script automatically creates snapshot before changes and can rollback on failure
+   - **SAFETY FEATURES (v3.8)**: Script automatically creates hybrid snapshots (full or metadata) before changes
+     - Small venvs (<500MB): Full compressed snapshot with pigz
+     - Large venvs (≥500MB): Fast metadata-only snapshot (~100KB, ~1 second)
+     - Intelligent rollback handles both types seamlessly
+   - Optional: Use --verbose flag for detailed command execution logging
    - Test each new/updated package installation and basic functionality
    - Check for package conflicts using pip check
    - Document any conflicts found (breaking vs. non-breaking)
@@ -388,15 +398,22 @@ The setup script now includes comprehensive safety features to ensure fail-safe 
 - Loads existing installation metadata if available
 - Fails fast before making any changes if issues detected
 
-**Environment Snapshots:**
-- **Automatic backup** of entire `.venv` directory before any changes
-- Snapshots named `.venv.snapshot_YYYYMMDD_HHMMSS/`
-- Includes metadata (timestamp, Python/pip versions, package count)
-- Automatically cleans up old snapshots (keeps 2 most recent)
+**Hybrid Snapshot Strategy (v3.8):**
+- **Intelligent size-based selection** of snapshot method
+- **Small venvs (<500MB):** Full compressed snapshot
+  - Uses pigz for parallel compression (4-5x faster)
+  - Excludes *.pyc and __pycache__ for smaller archives
+  - Complete instant rollback via tar extraction
+- **Large venvs (≥500MB):** Metadata-only snapshot
+  - Saves pip freeze, requirements files, pyvenv.cfg (~100KB)
+  - Fast rollback via pip-sync (leverages pip cache)
+  - Prevents 30+ minute hangs on large environments
+- Automatically cleans up old snapshots (keeps 2 most recent of each type)
 
-**Automatic Rollback:**
+**Intelligent Automatic Rollback (v3.8):**
 - Error trapping enabled during installation (`set -e` and `trap`)
-- Any failure triggers automatic restore from snapshot
+- **Tries metadata snapshot first** (faster, uses pip-sync)
+- **Falls back to full archive** if available
 - Removes failed environment and restores working state
 - Shows clear error message and restored environment details
 
@@ -433,17 +450,28 @@ The setup script now includes comprehensive safety features to ensure fail-safe 
 
 **Excluded from Git:**
 ```
-.venv.snapshot_*/          # Snapshot backups
-.env_metadata.json         # Installation metadata
-*.log                      # Log files
+.venv.snapshot_*.metadata/    # Metadata snapshot directories
+.venv.snapshot_*.tar.gz       # Full archive snapshots
+.venv.snapshot_*.tar.gz.meta  # Archive metadata files
+.env_metadata.json            # Installation metadata
+*.log                         # Log files
 ```
 
 **Manual Rollback (if needed):**
 ```bash
 cd base-env
 rm -rf .venv
-ls -td .venv.snapshot_* | head -1  # Find most recent snapshot
-mv .venv.snapshot_YYYYMMDD_HHMMSS .venv
+
+# For metadata snapshot:
+ls -td .venv.snapshot_*.metadata | head -1
+python -m venv .venv
+.venv/bin/pip install pip-tools
+.venv/bin/pip-sync .venv.snapshot_YYYYMMDD_HHMMSS.metadata/pip-freeze.txt
+
+# For full archive snapshot:
+ls -t .venv.snapshot_*.tar.gz | head -1
+tar -xzf .venv.snapshot_YYYYMMDD_HHMMSS.tar.gz
+
 source .venv/bin/activate
 ```
 
@@ -465,6 +493,74 @@ Before considering the update complete, verify:
 ---
 
 ## 🎓 Recent Improvements & Lessons Learned
+
+### October 2025: Hybrid Snapshot Strategy (v3.8)
+
+**Enhancement:**
+- Completely redesigned snapshot system to prevent hanging while maintaining rollback capability
+- Size-based strategy: full snapshots for small venvs, metadata-only for large venvs
+- Intelligent rollback handles both snapshot types seamlessly
+
+**Implementation:**
+- Added `create_metadata_snapshot()` function for large venvs (≥500MB)
+- Added `create_full_snapshot()` function for small venvs (<500MB)
+- Enhanced `rollback_to_snapshot()` to try metadata first, fall back to archive
+- Updated `cleanup_old_snapshots()` to manage both snapshot types
+- Uses pigz for parallel compression when available (4-5x faster)
+- Excludes *.pyc and __pycache__ files for smaller archives
+
+**Benefits:**
+- No more 30+ minute hangs on 1GB+ environments
+- ~100KB storage vs 200-300MB for large environments
+- ~1 second snapshot time vs 30+ minutes
+- Full rollback capability maintained for all environment sizes
+- Optimized compression for small environments
+
+**Your Environment (1025MB):**
+- Uses metadata-only snapshots
+- ~1 second to create vs 30+ minutes before
+- Fast rollback via pip-sync leveraging pip cache
+
+**Lesson Learned:**
+Snapshot strategies should adapt to environment size. What works for small environments (full backup) doesn't scale to large ones. Hybrid approach provides both speed and safety.
+
+### October 2025: Critical Bug Fixes (v3.7)
+
+**Bug #1: Python Version Mismatch False Positive**
+- **Problem:** Script was comparing version number with file path
+- **Root Cause:** `grep "version"` matched both "version = 3.13.9" and path containing "/versions/"
+- **Fix:** Changed to `grep "^version "` (anchored to start of line)
+- **Result:** No more false positive warnings
+
+**Bug #2: Script Hanging on Snapshot Creation**
+- **Problem:** Script hung for 30+ minutes trying to compress 1GB+ venvs
+- **Root Cause:** `tar czf .venv` was compressing entire environment
+- **Fix:** Added size check, skip snapshot if > 1GB (later improved to hybrid strategy in v3.8)
+- **Result:** Script no longer hangs
+
+**Lesson Learned:**
+Operations that work fine at small scale can become bottlenecks at large scale. Always test with realistic environment sizes.
+
+### October 2025: Verbose Logging (v3.6)
+
+**Enhancement:**
+- Added --verbose flag for detailed command execution logging
+- Implemented `log_verbose()`, `run_logged()`, `start_stage()`, `end_stage()` functions
+- Enhanced Python venv recreation with 10+ verbose checkpoints
+
+**Benefits:**
+- Full debugging visibility when needed
+- Command execution tracking with exit codes
+- Stage timing for performance analysis
+- Helps diagnose issues like Python version mismatches
+
+**Usage:**
+```bash
+./setup_base_env.sh --update --verbose
+```
+
+**Lesson Learned:**
+Verbose logging is essential for debugging complex multi-step scripts. Having detailed execution traces makes it much easier to identify issues.
 
 ### October 2025: Comprehensive Package Additions (21 packages)
 
@@ -690,6 +786,6 @@ Just like gremlinpython had a false conflict, smart constraints may become unnec
 ---
 
 **Last Updated:** October 29, 2025
-**Version:** 3.5 - Comprehensive Package Coverage
+**Version:** 3.8 - Hybrid Snapshot Strategy
 **Maintained by:** David Lary
-**Environment Version:** 3.5 with 146 direct Python packages
+**Environment Version:** 3.8 with hybrid snapshots, verbose logging, and 146 direct Python packages
