@@ -8,7 +8,7 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, and performance optimizations.
 
-**✨ NEW in v3.4:** FULLY AUTONOMOUS --update mode with separated toolchain/package updates. Toolchain updates (pyenv, Python, pip/pip-tools, R, Julia, system deps) are ALWAYS applied immediately as they are safe and independent. Package updates are ONLY applied if ALL tests pass for maximum stability. Correct Homebrew package names (r-app, julia) and all conditional language removed. **Fixed critical bug** where hardcoded smart constraint versions were preventing updates from being applied - smart constraints now apply AFTER updates, with latest tested versions (geemap 0.36.6, selenium 4.38.0).
+**✨ NEW in v3.4:** FULLY AUTONOMOUS --update mode with separated toolchain/package updates. Toolchain updates (pyenv, Python, pip/pip-tools, R, Julia, system deps) are ALWAYS applied immediately as they are safe and independent. Package updates are ONLY applied if ALL tests pass for maximum stability. **TRULY ADAPTIVE**: Smart constraints are now defaults, not hardcoded - Part 2.5 reads ACTUAL versions from requirements.in and tests them, generate_smart_constraints respects existing constraints instead of overwriting. System evolves based on conflict testing, not frozen versions. Correct Homebrew package names (r-app, julia).
 
 **v3.3 enhancements:** 5 additional enhancements (21 total) bringing security auditing with pip-audit CVE scanning, extended error context with line numbers and log history, graceful degradation for R/Julia (non-blocking failures), undefined variable detection (set -u), and **23 essential packages now included** (fixing README/code inconsistency): Deep Learning (torch, tensorflow, keras), Modern Data (polars, statsmodels, joblib), Scientific Formats (xarray, zarr, h5py), Infrastructure (pint, rpy2, sqlalchemy, psycopg2-binary, boto3), Utilities (tqdm, click, python-dateutil, feedparser, openpyxl), AI/NLP (spacy, langchain, jupyterlab, papermill).
 
@@ -552,20 +552,28 @@ This prevents bloating the repository while maintaining local safety features.
 
 ## Package Management Strategy
 
-### Smart Constraints (8 packages)
+### Smart Constraints (8 packages) - Adaptive System
 
-These packages have historically caused dependency conflicts. We pin specific versions:
+**🔄 ADAPTIVE, NOT HARDCODED**: These are **default versions** for packages that historically caused conflicts. The system:
+- Reads ACTUAL versions from `requirements.in` (respects what you have)
+- Tests each constraint individually in `--update` mode (Part 2.5)
+- Updates constraints when tests prove newer versions work
+- Only applies defaults for packages WITHOUT constraints
 
-| Package | Version | Reason |
-|---------|---------|--------|
+**Current Default Versions** (as of Oct 2025):
+
+| Package | Default Version | Reason |
+|---------|----------------|--------|
 | `numpy` | >=1.20.0 | Minimum version for core scientific computing compatibility |
 | `ipywidgets` | 8.1.7 | Jupyter widget compatibility with notebook ecosystem |
-| `geemap` | 0.36.6 | Pinned for Google Earth Engine API compatibility (updated Oct 2025) |
-| `plotly` | 5.15.0 | v6+ has breaking changes - pinned to stable 5.x |
-| `panel` | 1.8.2 | Dashboard framework pinned for stability |
+| `geemap` | 0.36.6 | Google Earth Engine API compatibility (adaptive - tests updates) |
+| `plotly` | 5.15.0 | v6+ has breaking changes - pinned to stable 5.x (needs testing) |
+| `panel` | 1.8.2 | Dashboard framework stability |
 | `bokeh` | 3.8.0 | Historical stability issues with newer versions |
 | `voila` | 0.5.11 | Web app conversion stability with ipywidgets==8.1.7 |
-| `selenium` | 4.38.0 | Browser automation - latest stable version (updated Oct 2025) |
+| `selenium` | 4.38.0 | Browser automation latest stable (adaptive - tests updates) |
+
+**System Evolution**: Run `./setup_base_env.sh --update` to test if constraints can be relaxed. Part 2.5 systematically tests each package and reports which constraints are still necessary vs. which can be relaxed.
 
 **Removed**: `jupyter-dash` (obsolete), `nose` (deprecated since 2015), `bqplot` and `jupyterlab` (no longer require pinning)
 

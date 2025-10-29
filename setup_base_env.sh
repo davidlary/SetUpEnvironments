@@ -1973,19 +1973,21 @@ def analyze_requirements(file_path):
         }
     }
     
-    # Backtracking prevention: Known problematic packages that cause pip resolver loops
+    # Backtracking prevention: DEFAULT versions for packages that cause pip resolver loops
+    # These are DEFAULTS only - will be overridden by existing constraints in requirements.in
     # Updated based on latest compatibility research (October 2025)
+    # NOTE: UPDATE_MODE can test and update these adaptively based on conflict testing
     backtracking_prone_packages = {
-        'bqplot': '0.12.45',      # Updated: Latest stable with bug fixes
-        'ipywidgets': '8.1.7',    # Updated: Latest 8.1.x with improvements
-        'jupyterlab': '4.4.9',    # Updated: Latest stable, built for JupyterLab 4
+        'bqplot': '0.12.45',      # Default: Latest stable with bug fixes
+        'ipywidgets': '8.1.7',    # Default: Latest 8.1.x with improvements
+        'jupyterlab': '4.4.9',    # Default: Latest stable, built for JupyterLab 4
         # 'jupyter-dash': REMOVED - Package obsolete, archived June 2024
-        'geemap': '0.36.6',       # Updated: Latest stable (Oct 2025) - auto-updated from 0.36.4
-        'plotly': '5.15.0',       # Keep 5.x: v6 has breaking changes, needs testing before upgrade
-        'panel': '1.8.2',         # Updated: Latest with bokeh 3.7-3.8 support
-        'bokeh': '3.8.0',         # Updated: Latest 3.x, compatible with panel 1.8.2
-        'voila': '0.5.11',        # Updated: Latest patch release, JupyterLab 4 based
-        'selenium': '4.38.0',     # Updated: Latest stable (Oct 2025) - auto-updated from 4.36.0
+        'geemap': '0.36.6',       # Default: Latest stable (Oct 2025) - adaptive system can update
+        'plotly': '5.15.0',       # Default: Keep 5.x (v6+ has breaking changes, needs testing)
+        'panel': '1.8.2',         # Default: Latest with bokeh 3.7-3.8 support
+        'bokeh': '3.8.0',         # Default: Latest 3.x, compatible with panel 1.8.2
+        'voila': '0.5.11',        # Default: Latest patch release, JupyterLab 4 based
+        'selenium': '4.38.0',     # Default: Latest stable (Oct 2025) - adaptive system can update
         # 'nose': REMOVED - Deprecated since 2015, migrate to pytest
     }
     
@@ -2027,20 +2029,27 @@ PYTHON_EOF
   # Run smart constraints generator
   if python3 smart_constraints.py "$requirements_file" | grep "SMART_CONSTRAINT:" > smart_constraints.txt; then
     if [ -s smart_constraints.txt ]; then
-      echo "✅ Applied smart constraints:"
+      echo "✅ Smart constraints available (will apply defaults only for unconstrained packages):"
       cat smart_constraints.txt | sed 's/SMART_CONSTRAINT:/  • /'
-      
-      # Apply to requirements file
+
+      # NON-DESTRUCTIVE: Only apply to packages WITHOUT existing constraints
       for constraint in $(cat smart_constraints.txt | sed 's/SMART_CONSTRAINT://'); do
         pkg_name=$(echo "$constraint" | sed 's/[<>=!].*//')
-        if grep -q "^${pkg_name}" "$requirements_file"; then
-          sed -i '' "s/^${pkg_name}.*/${constraint}  # Smart constraint/" "$requirements_file"
+        # Check if package exists WITHOUT a version constraint
+        if grep -q "^${pkg_name}$" "$requirements_file" || grep -q "^${pkg_name}[[:space:]]*#" "$requirements_file"; then
+          # Package has no constraint, add smart constraint
+          sed -i '' "s/^${pkg_name}.*/${constraint}  # Smart constraint (adaptive default)/" "$requirements_file"
+          echo "   📌 Added default constraint for: $pkg_name"
+        else
+          # Package already has a constraint, respect it (adaptive!)
+          EXISTING=$(grep "^${pkg_name}" "$requirements_file" | sed 's/[[:space:]].*//')
+          echo "   ✅ Respecting existing constraint: $EXISTING"
         fi
       done
       return 0
     fi
   fi
-  
+
   return 1
 }
 
@@ -2569,8 +2578,20 @@ if [ "$UPDATE_MODE" = "1" ]; then
   echo "Testing each smart constraint individually to identify which are still necessary..."
   echo ""
 
-  # List of smart constraints to test
-  SMART_CONSTRAINTS=("numpy>=1.20.0" "ipywidgets==8.1.7" "geemap==0.36.4" "plotly==5.15.0" "panel==1.8.2" "bokeh==3.8.0" "voila==0.5.11" "selenium==4.36.0")
+  # List of smart constraints to test (dynamically read from requirements.in.backup to respect current state)
+  SMART_CONSTRAINTS=()
+
+  # Read current smart constraint versions from requirements.in (adaptive, not hardcoded!)
+  for pkg in numpy ipywidgets geemap plotly panel bokeh voila selenium; do
+    CURRENT_CONSTRAINT=$(grep -i "^${pkg}[=><!]" requirements.in.backup | sed 's/[[:space:]].*//' || echo "${pkg}")
+    SMART_CONSTRAINTS+=("$CURRENT_CONSTRAINT")
+  done
+
+  echo "📋 Testing current smart constraints (read from requirements.in):"
+  for constraint in "${SMART_CONSTRAINTS[@]}"; do
+    echo "   • $constraint"
+  done
+  echo ""
   RELAXABLE_CONSTRAINTS=()
   NECESSARY_CONSTRAINTS=()
 
