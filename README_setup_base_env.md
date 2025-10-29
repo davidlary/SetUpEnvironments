@@ -84,14 +84,17 @@ source ~/Dropbox/Environments/activate_base_env.sh
 - **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **125 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
-  - **NOW INCLUDED (23 packages fixed)**:
-    - Deep Learning: torch, tensorflow, keras
-    - Modern Data: polars, statsmodels, joblib
-    - Scientific Formats: xarray, zarr, h5py
-    - Infrastructure: pint, rpy2, sqlalchemy, psycopg2-binary, boto3
-    - Utilities: tqdm, click, python-dateutil, feedparser, openpyxl
-    - AI/NLP: spacy, langchain, jupyterlab, papermill
+- **146 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
+  - **LATEST ADDITIONS (21 packages added Oct 2025)**:
+    - NLP & Embeddings: sentence-transformers, textstat, fuzzywuzzy, python-levenshtein, rapidfuzz
+    - ML & Clustering: hdbscan, umap-learn
+    - Testing: pytest-xdist, pytest-timeout, coverage
+    - Documentation: sphinx, sphinx-rtd-theme
+    - Content Processing: xmltodict, pdfplumber
+    - Web & API: PyGithub, webdriver-manager
+    - Development: isort, notebook, pydantic-settings
+    - Graph Databases: neo4j-driver
+    - Apple Silicon: mlx (conditional)
   - Includes gremlinpython for Gremlin graph queries (aenum conflict resolved Oct 2025)
 - **13 R Packages**: tidyverse, bibliometrix, reticulate, and more
 - **Julia Environment**: IJulia kernel with automatic setup
@@ -624,11 +627,11 @@ base-env/
 
 ## Package Categories
 
-### 📊 Data Manipulation (9)
-numpy, pandas, polars, pyarrow, duckdb, dask-geopandas, scipy, statsmodels, joblib
+### 📊 Data Manipulation (10)
+numpy, pandas, polars, pyarrow, duckdb, dask-geopandas, scipy, statsmodels, joblib, pydantic-settings
 
-### 🤖 Machine Learning (5)
-scikit-learn, xgboost, lightgbm, catboost, h2o
+### 🤖 Machine Learning (7)
+scikit-learn, xgboost, lightgbm, catboost, h2o, hdbscan, umap-learn
 
 ### 🔥 Deep Learning (3)
 torch (PyTorch), tensorflow, keras
@@ -639,8 +642,8 @@ matplotlib, seaborn, plotly, bokeh, altair, dash, fast-dash, dash-leaflet, pyvis
 ### 🌍 Geospatial Tools (4)
 geopandas, geemap, earthengine-api, spyndex
 
-### 🧪 Interactive Development (7)
-jupyter, jupyterlab, ipython, ipywidgets, voila, nbgrader, papermill
+### 🧪 Interactive Development (8)
+jupyter, jupyterlab, notebook, ipython, ipywidgets, voila, nbgrader, papermill
 
 ### 🌐 Web Deployment (8)
 streamlit, dash, panel, gradio, flask, fastapi, pywebio, nbconvert
@@ -657,8 +660,8 @@ yfinance, yahoofinancials, pandas-datareader
 ### 🗺️ Census & Geographic Data (2)
 census, us
 
-### 🌐 Web Automation & Scraping (4)
-selenium, beautifulsoup4, scholarly, tweepy
+### 🌐 Web Automation & Scraping (5)
+selenium, webdriver-manager, beautifulsoup4, scholarly, tweepy
 
 ### 🎞️ Scientific Animation (5)
 manim, pyvista, k3d, sympy, p5
@@ -669,11 +672,11 @@ Pillow, opencv-python, moviepy, imageio, ffmpeg-python, embedchain
 ### 📚 Bibliography Tools (2)
 pybtex, pyplantuml
 
-### 🧪 Testing & Autograding (4)
-pytest, nbgrader, otter-grader, nbval
+### 🧪 Testing & Autograding (7)
+pytest, pytest-cov, pytest-xdist, pytest-timeout, coverage, nbgrader, otter-grader, nbval
 
-### 🔤 Natural Language Processing (2)
-nltk, spacy
+### 🔤 Natural Language Processing (7)
+nltk, spacy, sentence-transformers, textstat, fuzzywuzzy, python-levenshtein, rapidfuzz
 
 ### 🤖 LLM Frameworks (1)
 langchain
@@ -690,11 +693,29 @@ rpy2
 ### 🗄️ Database & ORM (4)
 sqlalchemy, psycopg2-binary, duckdb-engine, redis
 
+### 🌐 Graph Databases (4)
+neo4j, neo4j-driver, python-arango, gremlinpython
+
 ### ☁️ Cloud Services (1)
 boto3
 
 ### 🛠️ Utilities (5)
 tqdm, click, python-dateutil, feedparser, openpyxl
+
+### 📚 Documentation (4)
+mkdocs, mkdocs-material, sphinx, sphinx-rtd-theme
+
+### 🔍 Content Processing (4)
+PyMuPDF, pdfplumber, xmltodict, ebooklib
+
+### 💻 Code Quality (4)
+black, flake8, mypy, isort
+
+### 🔧 Version Control (2)
+GitPython, PyGithub
+
+### 🍎 Apple Silicon Optimization (1)
+mlx (conditional, ARM64 only)
 
 ### 🔥 Scientific Computing (1)
 cantera (thermodynamics/chemistry)
@@ -908,6 +929,6 @@ See `Old/README.md` for historical versions:
 **Last Updated:** October 29, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.13
-**Total Packages:** Python (208 direct + dependencies), R (13), Julia (IJulia)
-**Version:** 3.5 with FULLY AUTONOMOUS updates and persistent fix
-**Note:** gremlinpython now included (aenum conflict resolved Oct 2025)
+**Total Packages:** Python (146 direct + dependencies), R (13), Julia (IJulia)
+**Version:** 3.5 with FULLY AUTONOMOUS updates and comprehensive package coverage
+**Note:** gremlinpython now included (aenum conflict resolved Oct 2025), 21 new packages added from PedagogicalEngine requirements
