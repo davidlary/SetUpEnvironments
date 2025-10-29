@@ -1,5 +1,5 @@
 # 📊 Data Manipulation & Analysis
-numpy>=1.20.0  # Smart constraint
+numpy==2.2.6  # Updated by adaptive system
 pandas>=2.0.0  # Data manipulation and analysis (QA requirement)
 polars  # Fast modern DataFrame library (>=0.20.0)
 pyarrow  # Columnar data format
@@ -8,6 +8,7 @@ dask-geopandas  # Parallel geospatial processing
 scipy  # Scientific computing (>=1.10.0)
 statsmodels  # Statistical models (>=0.14.0)
 pydantic>=2.4.0  # Data validation and settings management (QA requirement)
+pydantic-settings  # Settings management for Pydantic (>=2.0.0)
 joblib  # Parallelism and caching (>=1.3.0)
 
 # 🤖 Machine Learning
@@ -16,6 +17,8 @@ xgboost  # Gradient boosting
 lightgbm  # Gradient boosting
 catboost  # Gradient boosting
 h2o  # Machine learning platform
+hdbscan  # Density-based clustering (>=0.8.0)
+umap-learn  # Dimensionality reduction (>=0.5.0)
 
 # 🔥 Deep Learning
 torch  # PyTorch deep learning framework (>=2.0.0)
@@ -25,8 +28,8 @@ keras  # High-level deep learning API (>=3.0.0)
 # 📈 Visualization & Plotting
 matplotlib  # Basic plotting (>=3.7.0)
 seaborn  # Statistical visualization (>=0.12.0)
-plotly==5.15.0  # Smart constraint
-bokeh==3.8.0  # Smart constraint
+plotly==6.3.1  # Updated by adaptive system
+bokeh==3.8.0  # Updated by adaptive system
 altair  # Statistical visualization grammar
 dash-leaflet  # Interactive maps
 fast-dash  # Fast dashboard creation
@@ -35,16 +38,17 @@ pyvis  # Network visualization (>=0.3.2)
 
 # 🌍 Geospatial Tools
 geopandas  # Geospatial data processing
-geemap==0.36.4  # Smart constraint
+geemap==0.36.6  # Updated by adaptive system
 earthengine-api  # Google Earth Engine API
 spyndex  # Spectral indices
 
 # 🧪 Interactive Development
 jupyter  # Interactive notebooks
-jupyterlab  # Modern Jupyter notebook interface (>=4.0.0)
+jupyterlab==4.4.9  # Smart constraint
+notebook  # Jupyter notebook interface (>=7.0.0)
 ipython  # Enhanced Python shell
-ipywidgets==8.1.7  # Smart constraint
-voila==0.5.11  # Smart constraint
+ipywidgets==8.1.7  # Updated by adaptive system
+voila==0.5.11  # Updated by adaptive system
 papermill  # Parameterized notebook execution (>=2.4.0)
 
 # 🔥 Thermodynamics / Chemistry
@@ -69,7 +73,7 @@ p5  # Creative coding
 streamlit>=1.28.0  # Web apps for ML (QA requirement)
 streamlit-aggrid>=0.3.4  # Streamlit data grid component (QA requirement)
 dash  # Web applications
-panel==1.8.2  # Smart constraint
+panel==1.8.2  # Updated by adaptive system
 gradio  # ML model interfaces
 flask  # Web framework
 fastapi  # Modern web API framework
@@ -80,12 +84,16 @@ nbconvert  # Notebook conversion
 pytest>=7.4.0  # Unit testing framework (QA requirement)
 pytest-cov  # Test coverage reporting (>=4.0.0)
 pytest-asyncio  # Async testing support (>=0.21.0)
+pytest-xdist  # Parallel test execution (>=3.0.0)
+pytest-timeout  # Test timeouts (>=2.0.0)
+coverage  # Code coverage measurement (>=7.0.0)
 nbgrader  # Notebook autograding
 otter-grader  # Autograding system
 nbval  # Notebook validation
 black  # Code formatting (>=23.7.0)
 flake8  # Code linting (>=6.0.0)
 mypy  # Static type checking (>=1.5.0)
+isort  # Import sorting (>=5.0.0)
 
 # 🤖 API Clients & Web Requests
 openai>=1.3.0  # OpenAI API client (QA requirement)
@@ -96,9 +104,11 @@ aiohttp  # Async HTTP client/server (>=3.8.0)
 
 # 🔍 Content Processing & Text Extraction
 PyMuPDF>=1.23.0  # PDF processing with mathematical notation (QA requirement)
+pdfplumber  # PDF text extraction (>=0.10.0)
 ebooklib  # EPUB file processing (>=0.18)
 beautifulsoup4  # HTML/XML parsing (>=4.11.0)
 lxml  # Fast XML processing (>=4.9.0)
+xmltodict  # XML to dict conversion (>=0.13.0)
 
 # 📊 Graph Processing & Knowledge Management
 graphiti-core  # Graph processing core (>=0.11.6)
@@ -118,6 +128,7 @@ redis  # Redis client (>=4.6.0)
 # 🌐 Graph Databases
 python-arango  # ArangoDB client (>=8.2.0)
 neo4j  # Neo4j client (>=5.28.0)
+neo4j-driver  # Neo4j core driver (>=5.15.0)
 gremlinpython  # Gremlin graph query language (>=3.7.0) - CONFLICT RESOLVED: aenum<4.0.0 requirement is compatible (aenum 4.0+ does not exist, verified Oct 2025)
 
 # 🔐 Security & Authentication
@@ -143,6 +154,7 @@ psutil>=5.9.0  # System and process utilities (QA requirement)
 
 # 🔧 Version Control Integration
 GitPython>=3.1.37  # Git repository interface (QA requirement)
+PyGithub  # GitHub API wrapper (>=2.0.0)
 
 # 🗺️ Mind Map Generation
 pydot  # Graphviz interface (>=1.4.2)
@@ -155,6 +167,8 @@ graphviz  # Graph visualization (>=0.20.1)
 # 📚 Documentation
 mkdocs  # Documentation generator (>=1.5.0)
 mkdocs-material  # Material theme for MkDocs (>=9.2.0)
+sphinx  # Sphinx documentation generator (>=7.0.0)
+sphinx-rtd-theme  # ReadTheDocs theme for Sphinx (>=2.0.0)
 
 # 🤖 Machine Learning - Advanced
 transformers  # Hugging Face transformers (conflicts with chromadb tokenizers)
@@ -185,7 +199,8 @@ census  # US Census data API wrapper (>=0.8.0)
 us  # US state and territory metadata (>=2.0.0)
 
 # 🌐 Web Automation & Scraping
-selenium==4.36.0  # Smart constraint
+selenium==4.38.0  # Updated by adaptive system
+webdriver-manager  # WebDriver management for Selenium (>=4.0.0)
 scholarly  # Google Scholar web scraping (>=1.7.0)
 tweepy  # Twitter/X API client (>=4.0.0)
 
@@ -199,9 +214,17 @@ pyplantuml  # PlantUML diagram generation (>=0.3.0)
 # 🔤 Natural Language Processing
 nltk  # Natural Language Toolkit (>=3.8.0)
 spacy  # Industrial-strength NLP (>=3.7.0)
+sentence-transformers  # Semantic embeddings and transformers (>=2.0.0)
+textstat  # Readability scores and text statistics (>=0.7.0)
+fuzzywuzzy  # Fuzzy string matching (>=0.18.0)
+python-levenshtein  # Levenshtein distance for fuzzy matching (>=0.20.0)
+rapidfuzz  # Fast fuzzy string matching (>=3.0.0)
 
 # 🤖 LLM Frameworks
 langchain  # LLM application framework (>=0.1.0)
 
 # Dependency manager
 pip-tools  # Dependency management
+
+# 🍎 Apple Silicon Optimization
+mlx; platform_machine == "arm64"  # Apple Silicon ML framework (>=0.4.0)
