@@ -1974,18 +1974,18 @@ def analyze_requirements(file_path):
     }
     
     # Backtracking prevention: Known problematic packages that cause pip resolver loops
-    # Updated based on latest compatibility research (January 2025)
+    # Updated based on latest compatibility research (October 2025)
     backtracking_prone_packages = {
         'bqplot': '0.12.45',      # Updated: Latest stable with bug fixes
         'ipywidgets': '8.1.7',    # Updated: Latest 8.1.x with improvements
         'jupyterlab': '4.4.9',    # Updated: Latest stable, built for JupyterLab 4
         # 'jupyter-dash': REMOVED - Package obsolete, archived June 2024
-        'geemap': '0.36.4',       # Updated: Latest stable (Dec 2024)
-        'plotly': '5.15.0',       # Keep 5.x: v6 has breaking changes, needs review
+        'geemap': '0.36.6',       # Updated: Latest stable (Oct 2025) - auto-updated from 0.36.4
+        'plotly': '5.15.0',       # Keep 5.x: v6 has breaking changes, needs testing before upgrade
         'panel': '1.8.2',         # Updated: Latest with bokeh 3.7-3.8 support
         'bokeh': '3.8.0',         # Updated: Latest 3.x, compatible with panel 1.8.2
         'voila': '0.5.11',        # Updated: Latest patch release, JupyterLab 4 based
-        'selenium': '4.36.0',     # Updated: Latest with Python 3.9-3.13 support
+        'selenium': '4.38.0',     # Updated: Latest stable (Oct 2025) - auto-updated from 4.36.0
         # 'nose': REMOVED - Deprecated since 2015, migrate to pytest
     }
     
@@ -2221,11 +2221,16 @@ pip-tools  # Dependency management
 EOF
 fi
 
-# Apply intelligent pre-analysis
-echo "🧠 Running intelligent pre-analysis..."
-generate_smart_constraints requirements.in
-
 # 🔄 UPDATE MODE: Check for latest versions and test if old conflicts are resolved
+if [ "$UPDATE_MODE" = "1" ]; then
+  # Skip generate_smart_constraints for now - will apply after updates
+  echo "🔄 Update mode: Skipping smart constraints (will apply after updates)"
+else
+  # Apply intelligent pre-analysis (only in normal mode)
+  echo "🧠 Running intelligent pre-analysis..."
+  generate_smart_constraints requirements.in
+fi
+
 if [ "$UPDATE_MODE" = "1" ]; then
   echo ""
   echo "🔄 UPDATE MODE: Comprehensive environment check (Python, R, Julia, and system)"
@@ -2834,9 +2839,23 @@ if [ "$UPDATE_MODE" = "1" ]; then
   rm -f requirements.in.relaxed requirements.txt.test update_test.log install_test.log conflict_test.log requirements.in.backup
 
   echo ""
-  echo "🔄 UPDATE MODE COMPLETE - Proceeding with installation..."
+  echo "🔄 UPDATE MODE COMPLETE"
   echo "==============================================================================="
+
+  # Now apply smart constraints to the updated requirements.in
   echo ""
+  echo "🧠 Applying smart constraints to updated requirements..."
+  generate_smart_constraints requirements.in
+
+  echo ""
+  echo "✅ Proceeding with installation using updated requirements..."
+  echo ""
+fi
+
+# Apply smart constraints for non-update modes (already done above for update mode)
+if [ "$UPDATE_MODE" != "1" ]; then
+  # Already applied before UPDATE_MODE check, do nothing
+  true
 fi
 
 # 🚀 PERFORMANCE OPTIMIZATION: Smart pre-filtering and wheel pre-compilation
