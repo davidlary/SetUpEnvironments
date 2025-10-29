@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.3 (October 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.4 (October 2025) - **Enhanced Production-Grade Edition**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.12 (managed via pyenv)
 
@@ -8,7 +8,9 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, and performance optimizations.
 
-**✨ NEW in v3.3:** 5 additional enhancements (21 total) bringing security auditing with pip-audit CVE scanning, extended error context with line numbers and log history, graceful degradation for R/Julia (non-blocking failures), undefined variable detection (set -u), and **23 essential packages now included** (fixing README/code inconsistency): Deep Learning (torch, tensorflow, keras), Modern Data (polars, statsmodels, joblib), Scientific Formats (xarray, zarr, h5py), Infrastructure (pint, rpy2, sqlalchemy, psycopg2-binary, boto3), Utilities (tqdm, click, python-dateutil, feedparser, openpyxl), AI/NLP (spacy, langchain, jupyterlab, papermill).
+**✨ NEW in v3.4:** FULLY AUTONOMOUS --update mode with separated toolchain/package updates. Toolchain updates (pyenv, Python, pip/pip-tools, R, Julia, system deps) are ALWAYS applied immediately as they are safe and independent. Package updates are ONLY applied if ALL tests pass for maximum stability. Correct Homebrew package names (r-app, julia) and all conditional language removed.
+
+**v3.3 enhancements:** 5 additional enhancements (21 total) bringing security auditing with pip-audit CVE scanning, extended error context with line numbers and log history, graceful degradation for R/Julia (non-blocking failures), undefined variable detection (set -u), and **23 essential packages now included** (fixing README/code inconsistency): Deep Learning (torch, tensorflow, keras), Modern Data (polars, statsmodels, joblib), Scientific Formats (xarray, zarr, h5py), Infrastructure (pint, rpy2, sqlalchemy, psycopg2-binary, boto3), Utilities (tqdm, click, python-dateutil, feedparser, openpyxl), AI/NLP (spacy, langchain, jupyterlab, papermill).
 
 **v3.2 refinements (6):** Stale lock detection, stage logging in lock file, smart constraints (8 packages), adaptive conflict resolution (2-tier), early exit optimization.
 
@@ -893,9 +895,9 @@ See `Old/README.md` for historical versions:
 
 ---
 
-**Last Updated:** October 25, 2025
+**Last Updated:** October 28, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.12
 **Total Packages:** Python (125 direct + dependencies), R (13), Julia (IJulia)
-**Version:** 3.3 with 21 enhancements
+**Version:** 3.4 with FULLY AUTONOMOUS updates
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025)

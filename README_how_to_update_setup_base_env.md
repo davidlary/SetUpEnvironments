@@ -204,7 +204,7 @@ cd /path/to/your/environments/directory
 🐍 Current Python: 3.12.7
 🐍 Latest stable Python: 3.12.9
   📦 Update available: Python 3.12.7 → 3.12.9
-  💡 Will be installed automatically if you choose to apply updates
+  💡 Will be automatically installed
 
 📦 Current pip: 24.3.1 (pinned to <25.2 for pip-tools compatibility)
 📦 Current pip-tools: 7.5.1
@@ -215,7 +215,7 @@ cd /path/to/your/environments/directory
 
 📊 Current R: 4.3.2
   📦 Update available: R 4.3.2 → 4.4.0
-  💡 Will be upgraded automatically if you choose to apply updates
+  💡 Will be automatically upgraded
 
 📈 Current Julia: 1.10.0
   ✅ Julia is up to date
@@ -224,7 +224,7 @@ cd /path/to/your/environments/directory
   📦 libgit2: 1.7.1 → 1.8.0 (update available)
   ✅ libpq: 16.1 (up to date)
   ✅ openssl@3: 3.2.0 (up to date)
-  💡 Will be upgraded automatically if you choose to apply updates
+  💡 Will be automatically upgraded
 
 📊 COMPREHENSIVE TOOLCHAIN SUMMARY:
 -----------------------------------
@@ -651,7 +651,7 @@ Just like gremlinpython had a false conflict, smart constraints may become unnec
 
 ---
 
-**Last Updated:** October 25, 2025
-**Version:** 3.3 - Enhanced Production-Grade Edition
+**Last Updated:** October 28, 2025
+**Version:** 3.4 - FULLY AUTONOMOUS Updates
 **Maintained by:** David Lary
-**Environment Version:** 3.3
+**Environment Version:** 3.4
