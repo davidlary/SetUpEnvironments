@@ -1,11 +1,17 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.4 (October 2025)
+# Version: 3.5 (October 2025)
 #
-# Comprehensive data science environment with Python 3.12, R, and Julia support.
+# Comprehensive data science environment with Python 3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
 #           concurrent safety, memory monitoring, integrity verification, security audits.
+#
+# v3.5 Changes: Fixed persistent update detection issues
+#   - Venv now recreates automatically when Python version updates
+#   - Fixed version checks to detect actual versions (not "stable" placeholder)
+#   - Julia upgrade handles both formula and cask installations
+#   - Relaxable constraints now actually update (not just detect)
 #
 # v3.4 Changes: FULLY AUTONOMOUS --update mode with separated toolchain/package updates
 #
@@ -323,7 +329,7 @@ log_warn() { log "WARN" "$@"; }
 log_error() { log "ERROR" "$@"; }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.4 - Enhanced"
+log_info "Base Environment Setup Script v3.5 - Enhanced"
 log_info "Log file: $LOG_FILE"
 log_info "==================================================================="
 
@@ -2274,8 +2280,9 @@ if [ "$UPDATE_MODE" = "1" ]; then
   # Check if pyenv has updates available
   PYENV_UPDATE_AVAILABLE=0
   if command -v brew &>/dev/null; then
-    LATEST_PYENV_VERSION=$(brew info pyenv | head -1 | awk '{print $3}')
-    if [ "$CURRENT_PYENV_VERSION" != "$LATEST_PYENV_VERSION" ]; then
+    # Extract version number (field 4, not 3 which is 'stable')
+    LATEST_PYENV_VERSION=$(brew info pyenv | head -1 | awk '{print $4}' | tr -d ',')
+    if [ -n "$LATEST_PYENV_VERSION" ] && [ "$CURRENT_PYENV_VERSION" != "$LATEST_PYENV_VERSION" ]; then
       echo "  📦 Update available: pyenv $CURRENT_PYENV_VERSION → $LATEST_PYENV_VERSION"
       echo "  💡 Will be automatically upgraded"
       PYENV_UPDATE_AVAILABLE=1
@@ -2375,8 +2382,9 @@ if [ "$UPDATE_MODE" = "1" ]; then
     echo "📊 Current R: $CURRENT_R"
 
     if command -v brew &>/dev/null; then
+      # For casks, format is "r-app: 4.5.1" (version in field 3)
       LATEST_R=$(brew info r-app | head -1 | awk '{print $3}')
-      if [ "$CURRENT_R" != "$LATEST_R" ]; then
+      if [ -n "$LATEST_R" ] && [ "$CURRENT_R" != "$LATEST_R" ]; then
         echo "  📦 Update available: R $CURRENT_R → $LATEST_R"
         echo "  💡 Will be automatically upgraded"
         R_UPDATE_AVAILABLE=1
@@ -2391,6 +2399,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
   else
     echo "📊 R: Not installed"
     if command -v brew &>/dev/null; then
+      # For casks, format is "r-app: 4.5.1" (version in field 3)
       LATEST_R=$(brew info r-app 2>/dev/null | head -1 | awk '{print $3}')
       if [ -n "$LATEST_R" ]; then
         echo "  📦 Available for installation: R $LATEST_R"
@@ -2412,8 +2421,9 @@ if [ "$UPDATE_MODE" = "1" ]; then
     echo "📈 Current Julia: $CURRENT_JULIA"
 
     if command -v brew &>/dev/null; then
-      LATEST_JULIA=$(brew info julia | head -1 | awk '{print $3}')
-      if [ "$CURRENT_JULIA" != "$LATEST_JULIA" ]; then
+      # Extract version number (field 4, not 3 which is 'stable')
+      LATEST_JULIA=$(brew info julia | head -1 | awk '{print $4}' | tr -d ',')
+      if [ -n "$LATEST_JULIA" ] && [ "$CURRENT_JULIA" != "$LATEST_JULIA" ]; then
         echo "  📦 Update available: Julia $CURRENT_JULIA → $LATEST_JULIA"
         echo "  💡 Will be automatically upgraded"
         JULIA_UPDATE_AVAILABLE=1
@@ -2428,7 +2438,8 @@ if [ "$UPDATE_MODE" = "1" ]; then
   else
     echo "📈 Julia: Not installed"
     if command -v brew &>/dev/null; then
-      LATEST_JULIA=$(brew info julia 2>/dev/null | head -1 | awk '{print $3}')
+      # Extract version number for installation
+      LATEST_JULIA=$(brew info julia 2>/dev/null | head -1 | awk '{print $4}' | tr -d ',')
       if [ -n "$LATEST_JULIA" ]; then
         echo "  📦 Available for installation: Julia $LATEST_JULIA"
         echo "  💡 Will be automatically installed"
@@ -2451,9 +2462,10 @@ if [ "$UPDATE_MODE" = "1" ]; then
     for dep in libgit2 libpq openssl@3; do
       if brew list "$dep" &>/dev/null; then
         CURRENT_DEP=$(brew list --versions "$dep" | awk '{print $2}')
-        LATEST_DEP=$(brew info "$dep" | head -1 | awk '{print $3}')
+        # Extract version number (field 4, not 3 which is 'stable')
+        LATEST_DEP=$(brew info "$dep" | head -1 | awk '{print $4}' | tr -d ',')
 
-        if [ "$CURRENT_DEP" != "$LATEST_DEP" ]; then
+        if [ -n "$LATEST_DEP" ] && [ "$CURRENT_DEP" != "$LATEST_DEP" ]; then
           echo "  📦 $dep: $CURRENT_DEP → $LATEST_DEP (update available)"
           SYSTEM_DEPS_UPDATE_AVAILABLE=1
         else
@@ -2712,6 +2724,21 @@ if [ "$UPDATE_MODE" = "1" ]; then
     pyenv install -s "$LATEST_PYTHON"
     pyenv global "$LATEST_PYTHON"
     echo "✅ Python updated to $LATEST_PYTHON"
+
+    # Recreate venv to use new Python version
+    if [ -d ".venv" ]; then
+      echo "🔄 Recreating virtual environment with Python $LATEST_PYTHON..."
+      deactivate 2>/dev/null || true  # Deactivate if active
+      rm -rf .venv
+      "$PYENV_ROOT/versions/$LATEST_PYTHON/bin/python" -m venv .venv
+      source .venv/bin/activate
+      echo "✅ Virtual environment recreated with Python $LATEST_PYTHON"
+
+      # Upgrade pip and pip-tools in new venv
+      pip install --upgrade "pip<25.2" setuptools wheel pip-tools
+      echo "✅ pip and pip-tools installed in new venv"
+    fi
+
     TOOLCHAIN_UPDATES_APPLIED=1
   fi
 
@@ -2764,19 +2791,28 @@ if [ "$UPDATE_MODE" = "1" ]; then
   if [ "$JULIA_UPDATE_AVAILABLE" = "1" ]; then
     echo "📈 Updating Julia..."
     set +e
-    # Check if Julia is already installed
-    if brew list julia &>/dev/null; then
+    # Check if Julia formula is installed (preferred over cask)
+    if brew list --formula julia &>/dev/null; then
+      # Formula is installed, upgrade it
       brew upgrade julia 2>&1
       JULIA_UPGRADE_STATUS=$?
+    elif brew list --cask julia-app &>/dev/null; then
+      # Cask is installed, upgrade the cask instead
+      brew upgrade --cask julia-app 2>&1
+      JULIA_UPGRADE_STATUS=$?
     else
-      # Julia not installed, install it
-      echo "   Julia not currently installed, installing..."
+      # Neither installed, install formula (preferred)
+      echo "   Julia not currently installed, installing formula..."
       brew install julia 2>&1
       JULIA_UPGRADE_STATUS=$?
     fi
     set -e
     if [ $JULIA_UPGRADE_STATUS -eq 0 ]; then
-      echo "✅ Julia updated to $(julia --version | awk '{print $3}')"
+      if command -v julia &>/dev/null; then
+        echo "✅ Julia updated to $(julia --version | awk '{print $3}')"
+      else
+        echo "✅ Julia updated successfully"
+      fi
       TOOLCHAIN_UPDATES_APPLIED=1
     else
       echo "⚠️  Julia upgrade encountered issues, but continuing..."
@@ -2829,9 +2865,12 @@ if [ "$UPDATE_MODE" = "1" ]; then
       echo "📝 Updating smart constraints that tested safe to relax:"
       for pkg in "${RELAXABLE_CONSTRAINTS[@]}"; do
         # Get the latest version from the relaxed requirements
-        LATEST_VER=$(grep -i "^${pkg}==" requirements.txt.test | sed 's/.*==//' || echo "")
+        LATEST_VER=$(grep -i "^${pkg}==" requirements.txt.test | sed 's/.*==//' | sed 's/;.*//' || echo "")
         if [ -n "$LATEST_VER" ]; then
           echo "   • $pkg: updating to $LATEST_VER"
+          # Actually update the package in requirements.in with the resolved version
+          sed -i '' "s/^${pkg}$/${pkg}==${LATEST_VER}  # Updated by adaptive system/" requirements.in
+          sed -i '' "s/^${pkg}[[:space:]]*#.*/${pkg}==${LATEST_VER}  # Updated by adaptive system/" requirements.in
         fi
       done
     fi

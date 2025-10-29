@@ -1,14 +1,16 @@
 # Base Environment Setup Script
 
-**Version:** 3.4 (October 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.5 (October 2025) - **Enhanced Production-Grade Edition**
 **Script:** `setup_base_env.sh`
-**Python Version:** 3.12 (managed via pyenv)
+**Python Version:** 3.13 (managed via pyenv)
 
 ## Overview
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, and performance optimizations.
 
-**✨ NEW in v3.4:** FULLY AUTONOMOUS --update mode with separated toolchain/package updates. Toolchain updates (pyenv, Python, pip/pip-tools, R, Julia, system deps) are ALWAYS applied immediately as they are safe and independent. Package updates are ONLY applied if ALL tests pass for maximum stability. **TRULY ADAPTIVE**: Smart constraints are now defaults, not hardcoded - Part 2.5 reads ACTUAL versions from requirements.in and tests them, generate_smart_constraints respects existing constraints instead of overwriting. System evolves based on conflict testing, not frozen versions. Correct Homebrew package names (r-app, julia).
+**✨ NEW in v3.5:** Fixed persistent update detection issues. Venv now recreates automatically when Python version updates (preventing repeated "Python update available" messages). Fixed version checks for pyenv, Julia, and system dependencies to detect actual version numbers instead of "stable" placeholder. Julia upgrade now handles both formula and cask installations correctly. Relaxable constraints identified by Part 2.5 testing now actually update in requirements.in (not just detect and report).
+
+**v3.4:** FULLY AUTONOMOUS --update mode with separated toolchain/package updates. Toolchain updates (pyenv, Python, pip/pip-tools, R, Julia, system deps) are ALWAYS applied immediately as they are safe and independent. Package updates are ONLY applied if ALL tests pass for maximum stability. **TRULY ADAPTIVE**: Smart constraints are now defaults, not hardcoded - Part 2.5 reads ACTUAL versions from requirements.in and tests them, generate_smart_constraints respects existing constraints instead of overwriting. System evolves based on conflict testing, not frozen versions. Correct Homebrew package names (r-app, julia).
 
 **v3.3 enhancements:** 5 additional enhancements (21 total) bringing security auditing with pip-audit CVE scanning, extended error context with line numbers and log history, graceful degradation for R/Julia (non-blocking failures), undefined variable detection (set -u), and **23 essential packages now included** (fixing README/code inconsistency): Deep Learning (torch, tensorflow, keras), Modern Data (polars, statsmodels, joblib), Scientific Formats (xarray, zarr, h5py), Infrastructure (pint, rpy2, sqlalchemy, psycopg2-binary, boto3), Utilities (tqdm, click, python-dateutil, feedparser, openpyxl), AI/NLP (spacy, langchain, jupyterlab, papermill).
 

@@ -1,11 +1,13 @@
 # How to Update and Maintain the Base Environment
 
-**Version:** 1.0 (October 2025)
+**Version:** 1.1 (October 2025) - Updated for setup_base_env.sh v3.5
 **Related Files:** `setup_base_env.sh`, `README_setup_base_env.md`
 
 ## Overview
 
 This guide provides a comprehensive, reusable prompt for adding packages and maintaining the sophisticated data science environment. Use this every time you need to update the environment to ensure consistency with the smart constraints and conflict resolution system.
+
+**v3.5 Update:** The `--update` mode now fully applies updates that test as safe. Venv recreates automatically when Python version changes. Version checks correctly detect actual versions (not "stable" placeholders).
 
 ---
 
