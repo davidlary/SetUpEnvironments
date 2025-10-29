@@ -1,19 +1,25 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.5 (October 2025)
+# Version: 3.6 (October 2025)
 #
 # Comprehensive data science environment with Python 3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
-#           concurrent safety, memory monitoring, integrity verification, security audits.
+#           concurrent safety, memory monitoring, integrity verification, security audits,
+#           comprehensive verbose logging.
+#
+# v3.6 Changes: Added comprehensive verbose logging for debugging
+#   - New --verbose flag for detailed command execution and timing
+#   - Enhanced log_verbose() function with command echoing
+#   - Stage timing with start_stage() and end_stage()
+#   - Detailed Python venv recreation logging
+#   - All critical operations now logged with full context
 #
 # v3.5 Changes: Fixed persistent update detection issues
 #   - Venv now recreates automatically when Python version updates
 #   - Fixed version checks to detect actual versions (not "stable" placeholder)
 #   - Julia upgrade handles both formula and cask installations
 #   - Relaxable constraints now actually update (not just detect)
-#
-# v3.4 Changes: FULLY AUTONOMOUS --update mode with separated toolchain/package updates
 #
 # Usage:
 #   ./setup_base_env.sh                    # Fast mode (default)
@@ -185,6 +191,7 @@ ENABLE_ADAPTIVE=${ENABLE_ADAPTIVE:-0}
 FORCE_REINSTALL=0
 UPDATE_MODE=0
 CLEAR_LOCK_MODE=0
+VERBOSE_LOGGING=0
 
 # Check for flags
 for arg in "$@"; do
@@ -206,6 +213,10 @@ for arg in "$@"; do
       ENABLE_ADAPTIVE=1  # Auto-enable adaptive mode for update
       shift
       ;;
+    --verbose)
+      VERBOSE_LOGGING=1
+      shift
+      ;;
     --clearlock)
       CLEAR_LOCK_MODE=1
       shift
@@ -224,11 +235,13 @@ for arg in "$@"; do
       echo "                     • Packages: Python packages tested for conflicts first"
       echo "                       (ONLY applied if ALL tests pass - maximum stability)"
       echo "                     (automatically enables adaptive mode for intelligent resolution)"
+      echo "  --verbose          Enable verbose logging with command echoing and timing"
       echo "  --clearlock        Clear any stale lock files and exit"
       echo "  --help, -h         Show this help message"
       echo ""
       echo "Environment Variables:"
       echo "  ENABLE_ADAPTIVE=1    Enable adaptive resolution"
+      echo "  VERBOSE_LOGGING=1    Enable verbose logging"
       echo ""
       echo "Default: Fast mode with basic conflict detection"
       exit 0
@@ -301,10 +314,11 @@ acquire_lock
 log_stage "STARTED: Script initialization"
 
 # ============================================================================
-# ENHANCEMENT 7: STRUCTURED LOGGING with Timestamps
+# ENHANCEMENT 7: STRUCTURED LOGGING with Timestamps and Verbose Mode
 # ============================================================================
 LOG_FILE="/tmp/setup_base_env_$(date +%Y%m%d_%H%M%S).log"
 LOG_LEVEL=${LOG_LEVEL:-INFO}  # DEBUG, INFO, WARN, ERROR
+STAGE_START_TIME=0
 
 log() {
   local level=$1
@@ -328,9 +342,63 @@ log_info() { log "INFO" "$@"; }
 log_warn() { log "WARN" "$@"; }
 log_error() { log "ERROR" "$@"; }
 
+# Verbose logging function - logs to file and conditionally to console
+log_verbose() {
+  local message="$@"
+  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "[$timestamp] [VERBOSE] $message" >> "$LOG_FILE"
+  if [ "$VERBOSE_LOGGING" = "1" ]; then
+    echo "  🔍 $message"
+  fi
+}
+
+# Command execution with logging
+run_logged() {
+  local description="$1"
+  shift
+  local cmd="$@"
+
+  log_verbose "Executing: $description"
+  log_verbose "Command: $cmd"
+
+  if [ "$VERBOSE_LOGGING" = "1" ]; then
+    echo "  💻 Running: $cmd"
+    eval "$cmd"
+    local exit_code=$?
+    echo "  ✓ Exit code: $exit_code"
+    log_verbose "Exit code: $exit_code"
+    return $exit_code
+  else
+    eval "$cmd"
+    return $?
+  fi
+}
+
+# Stage timing
+start_stage() {
+  local stage_name="$1"
+  STAGE_START_TIME=$(date +%s)
+  log_info "===== STAGE START: $stage_name ====="
+  log_verbose "Stage '$stage_name' started at $(date '+%Y-%m-%d %H:%M:%S')"
+}
+
+end_stage() {
+  local stage_name="$1"
+  local end_time=$(date +%s)
+  local duration=$((end_time - STAGE_START_TIME))
+  log_info "===== STAGE END: $stage_name (${duration}s) ====="
+  log_verbose "Stage '$stage_name' completed in ${duration} seconds"
+  if [ "$VERBOSE_LOGGING" = "1" ]; then
+    echo "  ⏱️  Stage completed in ${duration}s"
+  fi
+}
+
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.5 - Enhanced"
+log_info "Base Environment Setup Script v3.6 - Enhanced with Verbose Logging"
 log_info "Log file: $LOG_FILE"
+if [ "$VERBOSE_LOGGING" = "1" ]; then
+  log_info "Verbose logging: ENABLED"
+fi
 log_info "==================================================================="
 
 if [ "$FORCE_REINSTALL" = "1" ]; then
@@ -342,6 +410,10 @@ elif [ "$ENABLE_ADAPTIVE" = "1" ]; then
   echo "🧠 Adaptive conflict resolution: ENABLED"
 else
   echo "⚡ Fast mode: ENABLED (use --adaptive for enhanced conflict resolution)"
+fi
+
+if [ "$VERBOSE_LOGGING" = "1" ]; then
+  echo "🔍 Verbose logging: ENABLED (detailed command execution and timing)"
 fi
 
 echo "----------------------------------------"
@@ -2721,22 +2793,42 @@ if [ "$UPDATE_MODE" = "1" ]; then
   # Apply Python version update if available
   if [ "$PYTHON_UPDATE_AVAILABLE" = "1" ]; then
     echo "🐍 Installing Python $LATEST_PYTHON..."
+    log_info "Installing Python $LATEST_PYTHON via pyenv"
+    log_verbose "Running: pyenv install -s $LATEST_PYTHON"
     pyenv install -s "$LATEST_PYTHON"
+    log_verbose "Running: pyenv global $LATEST_PYTHON"
     pyenv global "$LATEST_PYTHON"
     echo "✅ Python updated to $LATEST_PYTHON"
+    log_info "Python updated to $LATEST_PYTHON"
 
     # Recreate venv to use new Python version
     if [ -d ".venv" ]; then
       echo "🔄 Recreating virtual environment with Python $LATEST_PYTHON..."
+      log_info "Recreating venv with Python $LATEST_PYTHON"
+      log_verbose "Old venv Python: $(cat .venv/pyvenv.cfg | grep version || echo 'unknown')"
+
+      log_verbose "Deactivating current venv"
       deactivate 2>/dev/null || true  # Deactivate if active
+
+      log_verbose "Removing old .venv directory"
       rm -rf .venv
+
+      log_verbose "Creating new venv with: $PYENV_ROOT/versions/$LATEST_PYTHON/bin/python -m venv .venv"
       "$PYENV_ROOT/versions/$LATEST_PYTHON/bin/python" -m venv .venv
+
+      log_verbose "Activating new venv"
       source .venv/bin/activate
+
+      log_verbose "New venv Python: $(.venv/bin/python --version)"
       echo "✅ Virtual environment recreated with Python $LATEST_PYTHON"
+      log_info "Virtual environment recreated successfully"
 
       # Upgrade pip and pip-tools in new venv
+      log_verbose "Upgrading pip and pip-tools in new venv"
       pip install --upgrade "pip<25.2" setuptools wheel pip-tools
+      log_verbose "Installed: pip $(pip --version | awk '{print $2}'), pip-tools $(pip show pip-tools | grep Version | awk '{print $2}')"
       echo "✅ pip and pip-tools installed in new venv"
+      log_info "pip and pip-tools upgraded in new venv"
     fi
 
     TOOLCHAIN_UPDATES_APPLIED=1
