@@ -788,4 +788,4 @@ Just like gremlinpython had a false conflict, smart constraints may become unnec
 **Last Updated:** October 29, 2025
 **Version:** 3.8 - Hybrid Snapshot Strategy
 **Maintained by:** David Lary
-**Environment Version:** 3.8 with hybrid snapshots, verbose logging, and 146 direct Python packages
+**Environment Version:** 3.8 with hybrid snapshots, verbose logging, and 147 direct Python packages

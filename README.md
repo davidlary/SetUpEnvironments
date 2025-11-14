@@ -80,7 +80,7 @@ source ~/Dropbox/Environments/activate_base_env.sh
 - **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **125 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
+- **147 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
   - **NOW INCLUDED (23 packages fixed)**:
     - Deep Learning: torch, tensorflow, keras
     - Modern Data: polars, statsmodels, joblib
@@ -629,8 +629,8 @@ yfinance, yahoofinancials, pandas-datareader
 ### 🗺️ Census & Geographic Data (2)
 census, us
 
-### 🌐 Web Automation & Scraping (4)
-selenium, beautifulsoup4, scholarly, tweepy
+### 🌐 Web Automation & Scraping (5)
+selenium, beautifulsoup4, scholarly, semanticscholar, tweepy
 
 ### 🎞️ Scientific Animation (5)
 manim, pyvista, k3d, sympy, p5
@@ -814,9 +814,9 @@ See `Old/README.md` for historical versions:
 
 ---
 
-**Last Updated:** October 25, 2025
+**Last Updated:** November 14, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.12
-**Total Packages:** Python (125 direct + dependencies), R (13), Julia (IJulia)
+**Total Packages:** Python (147 direct + dependencies), R (13), Julia (IJulia)
 **Version:** 3.3 with 21 enhancements
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025)
