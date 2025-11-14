@@ -1,6 +1,6 @@
 # How to Update and Maintain the Base Environment
 
-**Version:** 1.2 (October 2025) - Updated for setup_base_env.sh v3.8
+**Version:** 1.2 (November 2025) - Updated for setup_base_env.sh v3.8
 **Related Files:** `setup_base_env.sh`, `README_setup_base_env.md`
 
 ## Overview
@@ -785,7 +785,7 @@ Just like gremlinpython had a false conflict, smart constraints may become unnec
 
 ---
 
-**Last Updated:** October 29, 2025
+**Last Updated:** November 14, 2025
 **Version:** 3.8 - Hybrid Snapshot Strategy
 **Maintained by:** David Lary
 **Environment Version:** 3.8 with hybrid snapshots, verbose logging, and 147 direct Python packages

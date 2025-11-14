@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.3 (October 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.3 (November 2025) - **Enhanced Production-Grade Edition**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.12 (managed via pyenv)
 
