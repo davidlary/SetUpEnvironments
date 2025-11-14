@@ -1,3 +1,6 @@
+# Auto-generated files (should not be tracked)
+requirements.txt
+
 # API Keys and Sensitive Data
 .env-keys.yml
 .env-keys.yml.*
