@@ -28,8 +28,8 @@ keras  # High-level deep learning API (>=3.0.0)
 # 📈 Visualization & Plotting
 matplotlib  # Basic plotting (>=3.7.0)
 seaborn  # Statistical visualization (>=0.12.0)
-plotly==6.3.1  # Updated by adaptive system
-bokeh==3.8.0  # Updated by adaptive system
+plotly==6.4.0  # Updated by adaptive system
+bokeh==3.8.1  # Updated by adaptive system
 altair  # Statistical visualization grammar
 dash-leaflet  # Interactive maps
 fast-dash  # Fast dashboard creation
@@ -47,7 +47,7 @@ jupyter  # Interactive notebooks
 jupyterlab==4.4.9  # Smart constraint
 notebook  # Jupyter notebook interface (>=7.0.0)
 ipython  # Enhanced Python shell
-ipywidgets==8.1.7  # Updated by adaptive system
+ipywidgets==8.1.8  # Updated by adaptive system
 voila==0.5.11  # Updated by adaptive system
 papermill  # Parameterized notebook execution (>=2.4.0)
 
@@ -98,7 +98,7 @@ isort  # Import sorting (>=5.0.0)
 # 🤖 API Clients & Web Requests
 openai>=1.3.0  # OpenAI API client (QA requirement)
 anthropic  # Anthropic API client
-requests  # HTTP library (>=2.28.0)
+requests>=2.31.0  # HTTP library
 httpx  # Async HTTP client (>=0.24.0)
 aiohttp  # Async HTTP client/server (>=3.8.0)
 
@@ -201,7 +201,8 @@ us  # US state and territory metadata (>=2.0.0)
 # 🌐 Web Automation & Scraping
 selenium==4.38.0  # Updated by adaptive system
 webdriver-manager  # WebDriver management for Selenium (>=4.0.0)
-scholarly  # Google Scholar web scraping (>=1.7.0)
+scholarly>=1.7.11  # Google Scholar web scraping
+semanticscholar>=0.8.3  # Semantic Scholar API client for academic papers
 tweepy  # Twitter/X API client (>=4.0.0)
 
 # 📚 Bibliography & Documentation

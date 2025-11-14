@@ -90,7 +90,7 @@ source ~/Dropbox/Environments/activate_base_env.sh
 - **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **146 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
+- **147 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
   - **LATEST ADDITIONS (21 packages added Oct 2025)**:
     - NLP & Embeddings: sentence-transformers, textstat, fuzzywuzzy, python-levenshtein, rapidfuzz
     - ML & Clustering: hdbscan, umap-learn
@@ -693,8 +693,8 @@ yfinance, yahoofinancials, pandas-datareader
 ### 🗺️ Census & Geographic Data (2)
 census, us
 
-### 🌐 Web Automation & Scraping (5)
-selenium, webdriver-manager, beautifulsoup4, scholarly, tweepy
+### 🌐 Web Automation & Scraping (6)
+selenium, webdriver-manager, beautifulsoup4, scholarly, semanticscholar, tweepy
 
 ### 🎞️ Scientific Animation (5)
 manim, pyvista, k3d, sympy, p5
@@ -959,9 +959,9 @@ See `Old/README.md` for historical versions:
 
 ---
 
-**Last Updated:** October 29, 2025
+**Last Updated:** November 14, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.13
-**Total Packages:** Python (146 direct + dependencies), R (13), Julia (IJulia)
+**Total Packages:** Python (147 direct + dependencies), R (13), Julia (IJulia)
 **Version:** 3.8 with hybrid snapshot strategy, verbose logging, and comprehensive bug fixes
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025), 21 new packages added from PedagogicalEngine requirements

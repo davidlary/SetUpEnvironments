@@ -1,0 +1,3 @@
+[submodule "Code/CV/cpf"]
+	path = Code/CV/cpf
+	url = https://github.com/davidlary/ContextPreservingFramework.git
