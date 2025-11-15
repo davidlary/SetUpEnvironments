@@ -90,7 +90,7 @@ source ~/Dropbox/Environments/activate_base_env.sh
 - **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **149 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
+- **150 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
   - **LATEST ADDITIONS (21 packages added Oct 2025)**:
     - NLP & Embeddings: sentence-transformers, textstat, fuzzywuzzy, python-levenshtein, rapidfuzz
     - ML & Clustering: hdbscan, umap-learn
@@ -738,8 +738,8 @@ tqdm, click, python-dateutil, feedparser, openpyxl
 ### 📚 Documentation (4)
 mkdocs, mkdocs-material, sphinx, sphinx-rtd-theme
 
-### 🔍 Content Processing (4)
-PyMuPDF, pdfplumber, xmltodict, ebooklib
+### 🔍 Content Processing (5)
+PyMuPDF, pdfplumber, xmltodict, ebooklib, python-docx
 
 ### 💻 Code Quality (4)
 black, flake8, mypy, isort
@@ -962,6 +962,6 @@ See `Old/README.md` for historical versions:
 **Last Updated:** November 14, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.13
-**Total Packages:** Python (149 direct + dependencies), R (13), Julia (IJulia)
+**Total Packages:** Python (150 direct + dependencies), R (13), Julia (IJulia)
 **Version:** 3.8 with hybrid snapshot strategy, verbose logging, and comprehensive bug fixes
-**Note:** gremlinpython now included (aenum conflict resolved Oct 2025), 21 new packages added from PedagogicalEngine requirements, kaleido and upsetplot added for visualization
+**Note:** gremlinpython now included (aenum conflict resolved Oct 2025), 21 new packages added from PedagogicalEngine requirements, kaleido and upsetplot added for visualization, python-docx added for document processing
