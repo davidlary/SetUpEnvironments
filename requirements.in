@@ -29,6 +29,7 @@ keras  # High-level deep learning API (>=3.0.0)
 matplotlib  # Basic plotting (>=3.7.0)
 seaborn  # Statistical visualization (>=0.12.0)
 plotly==6.4.0  # Updated by adaptive system
+kaleido  # Static image export for plotly (>=0.2.0)
 bokeh==3.8.1  # Updated by adaptive system
 altair  # Statistical visualization grammar
 upsetplot  # UpSet plots for set intersections (>=0.9.0)
