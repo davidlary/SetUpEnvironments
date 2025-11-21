@@ -404,7 +404,7 @@ end_stage() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.8.1 - Smart Pre-filtering Fix"
+log_info "Base Environment Setup Script v3.8.2 - Intelligent Pip Upgrades"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -1040,7 +1040,7 @@ rollback_to_snapshot() {
       # Install pip-tools if needed
       if ! .venv/bin/pip show pip-tools &>/dev/null; then
         echo "📦 Installing pip-tools..."
-        .venv/bin/pip install pip-tools
+        .venv/bin/pip install --disable-pip-version-check pip-tools 2>&1 | grep -v "^\[notice\]" || true
       fi
 
       # Restore packages using pip-sync
@@ -1592,8 +1592,31 @@ done
 # Pin pip to < 25.2 for compatibility with pip-tools 7.5.1
 echo "📦 Installing/upgrading pip, setuptools, and wheel..."
 
+# Check current pip version
+CURRENT_PIP=$(pip --version 2>/dev/null | awk '{print $2}' || echo "unknown")
+log_info "Current pip version: $CURRENT_PIP"
+
+# Find latest pip version within our <25.2 constraint
+echo "🔍 Checking for latest pip version within compatibility constraint (<25.2)..."
+LATEST_COMPATIBLE_PIP=$(python -m pip index versions pip 2>/dev/null | grep "Available versions:" | cut -d: -f2 | tr ',' '\n' | sed 's/^ *//g' | while read version; do
+  major=$(echo "$version" | cut -d. -f1)
+  minor=$(echo "$version" | cut -d. -f2)
+  if [ -n "$version" ] && ([ "$major" -lt 25 ] || ([ "$major" -eq 25 ] && [ "$minor" -lt 2 ])); then
+    echo "$version"
+    break
+  fi
+done)
+
+if [ -n "$LATEST_COMPATIBLE_PIP" ] && [ "$LATEST_COMPATIBLE_PIP" != "$CURRENT_PIP" ]; then
+  echo "   Upgrading pip $CURRENT_PIP → $LATEST_COMPATIBLE_PIP (within <25.2 constraint)"
+  TARGET_PIP="pip==$LATEST_COMPATIBLE_PIP"
+else
+  echo "   pip $CURRENT_PIP is up-to-date within constraint"
+  TARGET_PIP="pip<25.2"
+fi
+
 set +e
-pip install --upgrade 'pip<25.2' setuptools wheel 2>&1
+pip install --disable-pip-version-check --upgrade "$TARGET_PIP" setuptools wheel 2>&1 | grep -v "^\[notice\]" || true
 PIP_UPGRADE_STATUS=$?
 set -e
 
@@ -1611,7 +1634,7 @@ fi
 
 echo "📦 Installing pip-tools..."
 set +e
-pip install pip-tools 2>&1
+pip install --disable-pip-version-check pip-tools 2>&1 | grep -v "^\[notice\]" || true
 PIPTOOLS_STATUS=$?
 set -e
 
@@ -2970,8 +2993,8 @@ if [ "$UPDATE_MODE" = "1" ]; then
 
       # Upgrade pip and pip-tools in new venv
       log_verbose "Upgrading pip and pip-tools in new venv"
-      pip install --upgrade "pip<25.2" setuptools wheel pip-tools
-      log_verbose "Installed: pip $(pip --version | awk '{print $2}'), pip-tools $(pip show pip-tools | grep Version | awk '{print $2}')"
+      pip install --disable-pip-version-check --upgrade "pip<25.2" setuptools wheel pip-tools 2>&1 | grep -v "^\[notice\]" || true
+      log_verbose "Installed: pip $(pip --version 2>/dev/null | awk '{print $2}'), pip-tools $(pip show pip-tools 2>/dev/null | grep Version | awk '{print $2}')"
       echo "✅ pip and pip-tools installed in new venv"
       log_info "pip and pip-tools upgraded in new venv"
     fi
@@ -2983,14 +3006,14 @@ if [ "$UPDATE_MODE" = "1" ]; then
   if [ "$PIP_UPDATE_AVAILABLE" = "1" ] || [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
     if [ "$PIP_TOOLS_UPDATE_AVAILABLE" = "1" ]; then
       echo "📦 Updating pip and pip-tools..."
-      pip install --upgrade pip pip-tools
-      echo "✅ pip updated to $(pip --version | awk '{print $2}')"
-      echo "✅ pip-tools updated to $(pip show pip-tools | grep Version | awk '{print $2}')"
+      pip install --disable-pip-version-check --upgrade pip pip-tools 2>&1 | grep -v "^\[notice\]" || true
+      echo "✅ pip updated to $(pip --version 2>/dev/null | awk '{print $2}')"
+      echo "✅ pip-tools updated to $(pip show pip-tools 2>/dev/null | grep Version | awk '{print $2}')"
       TOOLCHAIN_UPDATES_APPLIED=1
     elif [ "$PIP_UPDATE_AVAILABLE" = "1" ]; then
       echo "📦 Updating pip..."
-      pip install --upgrade "pip<25.2"
-      echo "✅ pip updated to $(pip --version | awk '{print $2}')"
+      pip install --disable-pip-version-check --upgrade "pip<25.2" 2>&1 | grep -v "^\[notice\]" || true
+      echo "✅ pip updated to $(pip --version 2>/dev/null | awk '{print $2}')"
       TOOLCHAIN_UPDATES_APPLIED=1
     fi
 
