@@ -439,7 +439,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.9.0 - Dynamic Constraints & Security"
+log_info "Base Environment Setup Script v3.9.1 - Memory Detection Fix"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -621,14 +621,28 @@ fi
 echo "✅ Sufficient disk space: ${AVAILABLE_GB}GB available"
 log_info "Disk space check passed: ${AVAILABLE_GB}GB available"
 
-# ENHANCEMENT 2: Memory/RAM Monitoring
+# ENHANCEMENT 2: Memory/RAM Monitoring (Fixed for Apple Silicon)
 echo "💾 Checking available memory..."
 if [ "$OS_PLATFORM" = "macos" ]; then
-  # macOS: Get total and free memory in GB
+  # macOS: Get total memory in GB
   TOTAL_MEM_MB=$(sysctl -n hw.memsize | awk '{print int($1/1024/1024)}')
   TOTAL_MEM_GB=$(($TOTAL_MEM_MB / 1024))
-  FREE_MEM_MB=$(vm_stat | grep "Pages free" | awk '{print $3}' | sed 's/\.//' | awk '{print int($1*4096/1024/1024)}')
+
+  # Get page size dynamically (Apple Silicon uses 16KB pages, Intel uses 4KB pages)
+  PAGE_SIZE=$(vm_stat | grep "page size" | awk '{print $(NF-1)}')
+
+  # Extract memory statistics from vm_stat
+  # Available memory = free + inactive + speculative (all can be reclaimed if needed)
+  PAGES_FREE=$(vm_stat | grep "Pages free:" | awk '{print $3}' | sed 's/\.//')
+  PAGES_INACTIVE=$(vm_stat | grep "Pages inactive:" | awk '{print $3}' | sed 's/\.//')
+  PAGES_SPECULATIVE=$(vm_stat | grep "Pages speculative:" | awk '{print $3}' | sed 's/\.//')
+
+  # Calculate available memory
+  AVAILABLE_PAGES=$((PAGES_FREE + PAGES_INACTIVE + PAGES_SPECULATIVE))
+  FREE_MEM_MB=$((AVAILABLE_PAGES * PAGE_SIZE / 1024 / 1024))
   FREE_MEM_GB=$(($FREE_MEM_MB / 1024))
+
+  log_debug "Memory calculation: page_size=$PAGE_SIZE, free=$PAGES_FREE, inactive=$PAGES_INACTIVE, speculative=$PAGES_SPECULATIVE"
 elif [ "$OS_PLATFORM" = "linux" ]; then
   # Linux: Get total and available memory in GB
   TOTAL_MEM_GB=$(free -g | awk '/^Mem:/{print $2}')

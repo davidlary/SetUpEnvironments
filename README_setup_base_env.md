@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.9.0 (November 2025) - **Production-Grade with Dynamic Pip Constraints & Security Auditing**
+**Version:** 3.9.1 (November 2025) - **Production-Grade with Dynamic Pip Constraints & Security Auditing**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.13 (managed via pyenv)
 
@@ -8,7 +8,16 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, and automatic security vulnerability scanning.
 
-**✨ NEW in v3.9.0:**
+**✨ NEW in v3.9.1:**
+
+### Fixed Memory Detection for Apple Silicon
+- **Root cause identified:** Script was hardcoded to use 4KB page size, but Apple Silicon uses 16KB pages
+- **Wrong calculation:** Only counted "Pages free", missing inactive and speculative pages that can be reclaimed
+- **Fix:** Dynamic page size detection from vm_stat + proper available memory calculation (free + inactive + speculative)
+- **Result:** Memory detection now shows accurate values (was showing 0GB available, now correctly shows ~11GB available on 32GB system)
+- **Cross-platform:** Works correctly on both Intel Macs (4KB pages) and Apple Silicon (16KB pages)
+
+**v3.9.0:**
 
 ### Dynamic Pip Constraint System
 - **Intelligent version-aware compatibility:** Script now automatically determines safe pip version constraints based on installed pip-tools version
@@ -988,5 +997,5 @@ See `Old/README.md` for historical versions:
 **Maintained by:** David Lary
 **Python Version:** 3.13
 **Total Packages:** Python (150 direct + dependencies), R (13), Julia (IJulia)
-**Version:** 3.9.0 with dynamic pip constraints, automatic security auditing, and package import validation
+**Version:** 3.9.1 with accurate memory detection for Apple Silicon, dynamic pip constraints, automatic security auditing, and package import validation
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025), 21 new packages added from PedagogicalEngine requirements, kaleido and upsetplot added for visualization, python-docx added for document processing
