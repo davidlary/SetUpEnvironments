@@ -404,7 +404,7 @@ end_stage() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.8 - Hybrid Snapshot Strategy"
+log_info "Base Environment Setup Script v3.8.1 - Smart Pre-filtering Fix"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -3160,28 +3160,48 @@ echo "🎯 Smart pre-filtering packages..."
 
 # Create a list of packages that actually need installation
 create_needed_packages_list() {
-  # Extract clean package names from requirements.in
-  grep -vE '^\s*#' requirements.in | grep -vE '^\s*$' | sed 's/#.*//' | sed 's/[[:space:]]*$//' | grep -vE '^\s*$' > all_packages.txt
-  
+  # Extract package names only (without version specs) from requirements.in
+  # Remove comments, strip whitespace, extract package name before any version operator or semicolon
+  grep -vE '^\s*#' requirements.in | grep -vE '^\s*$' | \
+    sed 's/#.*//' | \
+    sed 's/[[:space:]]*$//' | \
+    grep -vE '^\s*$' | \
+    sed -E 's/[>=<~!;].*//' | \
+    tr '[:upper:]' '[:lower:]' | \
+    sed 's/[[:space:]]*$//' > all_packages.txt
+
   # Get currently installed packages
   pip list --format=freeze | cut -d'=' -f1 | tr '[:upper:]' '[:lower:]' > installed_packages.txt
-  
+
   # Find packages that actually need installation/updates
   comm -23 <(sort all_packages.txt) <(sort installed_packages.txt) > needed_packages.txt
   
   NEEDED_COUNT=$(wc -l < needed_packages.txt)
   TOTAL_COUNT=$(wc -l < all_packages.txt)
-  
+
   echo "📊 Found $NEEDED_COUNT packages to install/update out of $TOTAL_COUNT total"
-  
+
   if [ $NEEDED_COUNT -gt 0 ]; then
-    echo "🔄 Pre-installing filtered packages with caching..."
-    # Install needed packages with caching
-    cat needed_packages.txt | xargs pip install --timeout 15 --retries 2 --cache-dir "$PIP_CACHE_DIR"
+    # Validate needed_packages.txt for malformed entries
+    echo "🔍 Validating package list..."
+    INVALID_COUNT=$(grep -cE '^\s*$|^[^a-zA-Z0-9_-]|^[>=<~!;]' needed_packages.txt || true)
+
+    if [ "$INVALID_COUNT" -gt 0 ]; then
+      echo "⚠️  Warning: Detected $INVALID_COUNT invalid package name(s) in filtered list"
+      echo "   Skipping pre-filtering optimization for safety"
+      log_warn "Invalid package names detected in pre-filter, skipping optimization"
+    else
+      echo "🔄 Pre-installing filtered packages with caching..."
+      # Install needed packages with caching (with error handling)
+      if ! cat needed_packages.txt | xargs pip install --timeout 15 --retries 2 --cache-dir "$PIP_CACHE_DIR" 2>/dev/null; then
+        echo "⚠️  Pre-filtering installation encountered errors, will retry with full requirements.txt"
+        log_warn "Pre-filter installation failed, falling back to full installation"
+      fi
+    fi
   else
     echo "✅ All packages already installed, skipping pre-installation"
   fi
-  
+
   # Clean up temporary files
   rm -f all_packages.txt installed_packages.txt needed_packages.txt
 }

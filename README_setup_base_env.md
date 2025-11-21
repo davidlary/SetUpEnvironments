@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.8 (November 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.8.1 (November 2025) - **Enhanced Production-Grade Edition**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.13 (managed via pyenv)
 
@@ -8,7 +8,9 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, and intelligent snapshot strategy.
 
-**✨ NEW in v3.8:** Hybrid snapshot strategy for optimal performance. Small venvs (<500MB) use full compressed snapshots with pigz parallel compression. Large venvs (≥500MB) use fast metadata-only snapshots (~100KB, ~1 second). Intelligent rollback handles both types seamlessly. Enhanced cleanup manages both snapshot types.
+**✨ NEW in v3.8.1:** Critical bug fix in smart pre-filtering. Fixed package name extraction logic that was comparing full package specifications (e.g., `numpy==2.2.6`) against package names, causing malformed requirements and pip errors. Added validation layer and auto-recovery that detects invalid package names and gracefully falls back to full installation if needed.
+
+**v3.8:** Hybrid snapshot strategy for optimal performance. Small venvs (<500MB) use full compressed snapshots with pigz parallel compression. Large venvs (≥500MB) use fast metadata-only snapshots (~100KB, ~1 second). Intelligent rollback handles both types seamlessly. Enhanced cleanup manages both snapshot types.
 
 **v3.7:** Critical bug fixes. Fixed Python version mismatch detection (grep now anchored to "^version "). Fixed script hanging on snapshot creation (was compressing 1GB+ venvs for 30+ minutes). Snapshot now checks venv size first.
 
@@ -959,9 +961,9 @@ See `Old/README.md` for historical versions:
 
 ---
 
-**Last Updated:** November 14, 2025
+**Last Updated:** November 20, 2025
 **Maintained by:** David Lary
 **Python Version:** 3.13
 **Total Packages:** Python (150 direct + dependencies), R (13), Julia (IJulia)
-**Version:** 3.8 with hybrid snapshot strategy, verbose logging, and comprehensive bug fixes
+**Version:** 3.8.1 with smart pre-filtering bug fix and auto-recovery
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025), 21 new packages added from PedagogicalEngine requirements, kaleido and upsetplot added for visualization, python-docx added for document processing
