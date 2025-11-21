@@ -439,7 +439,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.9.1 - Memory Detection Fix"
+log_info "Base Environment Setup Script v3.9.2 - Git Config & YAML Fix"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -1470,7 +1470,9 @@ function get_yaml_value {
 function get_nested_yaml_value {
   local parent=$1
   local key=$2
-  grep -A 5 "^\s*$parent:" "$API_KEYS_YAML" | grep "^\s*$key:" | sed 's/^\s*$key:\s*"\(.*\)"/\1/'
+  # Extract value from nested YAML structure
+  # Use awk to reliably extract quoted values (handles both single and double quotes)
+  grep -A 5 "^\s*$parent:" "$API_KEYS_YAML" | grep "^\s*$key:" | awk -F'["\047]' '{print $2}'
 }
 
 # Function to check if a key exists in YAML
@@ -1560,6 +1562,36 @@ if [ -f "$API_KEYS_YAML" ]; then
   export CENSUS_API_KEY="${CENSUS_API_KEY:-$(get_nested_yaml_value "api_keys" "census_api_key")}"
 
   echo "✅ API keys loaded from YAML file (ANTHROPIC_API_KEY excluded for Claude Code compatibility)"
+
+  # Configure git with credentials from YAML (for both local repo and global config)
+  # This ensures git operations (commits, pushes) use the correct identity
+  if [ -n "$GITHUB_EMAIL" ] && [ "$GITHUB_EMAIL" != "your-github-email-here" ]; then
+    echo "🔧 Configuring git with credentials from .env-keys.yml..."
+
+    # Set local repository config (if we're in a git repo)
+    if [ -d .git ]; then
+      git config user.email "$GITHUB_EMAIL"
+      git config user.name "$GITHUB_NAME"
+      log_info "Git local config: email=$GITHUB_EMAIL, name=$GITHUB_NAME"
+    fi
+
+    # Set global config (for all git operations in this user account)
+    git config --global user.email "$GITHUB_EMAIL" 2>/dev/null || true
+    git config --global user.name "$GITHUB_NAME" 2>/dev/null || true
+
+    # Configure git to use HTTPS with token for GitHub operations
+    # This allows Claude Code and other tools to push/pull without prompting
+    if [ -n "$GITHUB_TOKEN" ] && [ "$GITHUB_TOKEN" != "your-github-token-here" ]; then
+      # Use credential.helper to cache the token
+      git config --global credential.helper store 2>/dev/null || true
+      log_info "Git configured for HTTPS with credential helper"
+    fi
+
+    echo "   ✅ Git configured: $GITHUB_EMAIL / $GITHUB_NAME"
+    log_info "Git configuration complete"
+  else
+    log_debug "Skipping git config: GITHUB_EMAIL not set or is placeholder"
+  fi
 else
   echo "⚠️  API keys file not found at $API_KEYS_YAML"
   echo "   Creating new YAML file with placeholders..."

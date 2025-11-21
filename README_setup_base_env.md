@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.9.1 (November 2025) - **Production-Grade with Dynamic Pip Constraints & Security Auditing**
+**Version:** 3.9.2 (November 2025) - **Production-Grade with Dynamic Pip Constraints & Security Auditing**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.13 (managed via pyenv)
 
@@ -8,7 +8,27 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, and automatic security vulnerability scanning.
 
-**✨ NEW in v3.9.1:**
+**✨ NEW in v3.9.2:**
+
+### Automatic Git Configuration from .env-keys.yml
+- **Problem fixed:** Claude Code and git operations didn't automatically know user email (davidlary@me.com) and name
+- **Root cause:** YAML parsing function had bug preventing proper extraction of nested values
+- **YAML parsing fix:** Fixed `get_nested_yaml_value()` to properly extract values (was returning raw YAML lines)
+- **Automatic git config:** Script now sets both local and global git config from .env-keys.yml
+- **Security preserved:** No credentials hardcoded in script - all loaded from gitignored .env-keys.yml file
+- **HTTPS support:** Configures git credential helper for seamless GitHub operations
+- **Result:** Git operations now automatically use correct identity without prompting
+
+### How It Works
+1. Script reads GITHUB_EMAIL and GITHUB_NAME from .env-keys.yml
+2. Sets local git config (if in a git repository)
+3. Sets global git config (for all git operations)
+4. Configures credential helper for HTTPS token authentication
+5. All values exported as environment variables for Claude Code and other tools
+
+**Note:** This works with your existing HTTPS remote URLs (like `https://github.com/davidlary/SetUpEnvironments.git`). If you use SSH URLs (`git@github.com:...`), those will continue working as-is with your SSH keys.
+
+**v3.9.1:**
 
 ### Fixed Memory Detection for Apple Silicon
 - **Root cause identified:** Script was hardcoded to use 4KB page size, but Apple Silicon uses 16KB pages
@@ -997,5 +1017,5 @@ See `Old/README.md` for historical versions:
 **Maintained by:** David Lary
 **Python Version:** 3.13
 **Total Packages:** Python (150 direct + dependencies), R (13), Julia (IJulia)
-**Version:** 3.9.1 with accurate memory detection for Apple Silicon, dynamic pip constraints, automatic security auditing, and package import validation
+**Version:** 3.9.2 with automatic git configuration, fixed YAML parsing, accurate memory detection for Apple Silicon, dynamic pip constraints, automatic security auditing, and package import validation
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025), 21 new packages added from PedagogicalEngine requirements, kaleido and upsetplot added for visualization, python-docx added for document processing
