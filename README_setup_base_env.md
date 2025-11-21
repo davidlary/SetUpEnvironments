@@ -1,14 +1,35 @@
 # Base Environment Setup Script
 
-**Version:** 3.8.2 (November 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.9.0 (November 2025) - **Production-Grade with Dynamic Pip Constraints & Security Auditing**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.13 (managed via pyenv)
 
 ## Overview
 
-This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, and intelligent snapshot strategy.
+This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, and automatic security vulnerability scanning.
 
-**✨ NEW in v3.8.2:** Intelligent pip upgrade with active version checking. Script now proactively queries PyPI for the latest pip version within compatibility constraints (<25.2 for pip-tools compatibility), upgrades when newer versions are available, and suppresses redundant upgrade notices with `--disable-pip-version-check`. Applies to all pip operations in normal mode, update mode, and venv recreation. Clean output without notice spam.
+**✨ NEW in v3.9.0:**
+
+### Dynamic Pip Constraint System
+- **Intelligent version-aware compatibility:** Script now automatically determines safe pip version constraints based on installed pip-tools version
+- **pip-tools 7.5.2+ support:** Automatically uses `pip<26` constraint (allowing pip 25.3+) when pip-tools 7.5.2+ is detected
+- **Backward compatible:** Falls back to conservative `pip<25.2` constraint for older pip-tools versions
+- **Self-adapting:** No manual script updates needed - constraint adjusts automatically as pip-tools updates
+- **Researched solution:** Based on GitHub issue tracking (jazzband/pip-tools#2252) showing pip-tools 7.5.2 fixed AttributeError with pip 25.3+
+
+### Automatic Security Vulnerability Scanning
+- **Post-installation pip-audit:** Automatically scans all installed packages for known security vulnerabilities
+- **Interactive remediation:** Prompts user to apply automatic fixes with `pip-audit --fix` when vulnerabilities detected
+- **Automatic pip-audit installation:** Installs pip-audit if not present
+- **Requirements recompilation:** Automatically updates requirements.txt after applying security fixes
+- **Comprehensive logging:** Records security audit results in log file
+
+### Package Import Validation
+- **Critical package testing:** Validates that numpy, pandas, matplotlib, jupyter, and ipykernel import successfully
+- **Early failure detection:** Catches import errors before user attempts to use packages
+- **Detailed reporting:** Shows which packages failed and why
+
+**v3.8.2:** Intelligent pip upgrade with active version checking. Script proactively queries PyPI for the latest pip version within compatibility constraints, upgrades when newer versions are available, and suppresses redundant upgrade notices with `--disable-pip-version-check`. Clean output without notice spam.
 
 **v3.8.1:** Critical bug fix in smart pre-filtering. Fixed package name extraction logic that was comparing full package specifications (e.g., `numpy==2.2.6`) against package names, causing malformed requirements and pip errors. Added validation layer and auto-recovery that detects invalid package names and gracefully falls back to full installation if needed.
 
@@ -967,5 +988,5 @@ See `Old/README.md` for historical versions:
 **Maintained by:** David Lary
 **Python Version:** 3.13
 **Total Packages:** Python (150 direct + dependencies), R (13), Julia (IJulia)
-**Version:** 3.8.2 with intelligent pip auto-upgrade and version check suppression
+**Version:** 3.9.0 with dynamic pip constraints, automatic security auditing, and package import validation
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025), 21 new packages added from PedagogicalEngine requirements, kaleido and upsetplot added for visualization, python-docx added for document processing

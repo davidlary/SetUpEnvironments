@@ -403,8 +403,43 @@ end_stage() {
   fi
 }
 
+# ============================================================================
+# DYNAMIC PIP CONSTRAINT - Version-aware compatibility checking
+# ============================================================================
+# Function to determine safe pip constraint based on pip-tools version
+# Returns appropriate pip version constraint that is compatible with installed pip-tools
+get_safe_pip_constraint() {
+  local piptools_version=$(pip show pip-tools 2>/dev/null | grep "^Version:" | awk '{print $2}')
+
+  if [ -z "$piptools_version" ]; then
+    echo "pip<25.2"  # Conservative default if pip-tools not found
+    log_debug "pip-tools not found, using conservative constraint: pip<25.2"
+    return
+  fi
+
+  # Parse version components
+  local major=$(echo "$piptools_version" | cut -d. -f1)
+  local minor=$(echo "$piptools_version" | cut -d. -f2)
+  local patch=$(echo "$piptools_version" | cut -d. -f3 | cut -d- -f1)  # Handle versions like 7.5.2.dev
+
+  # Default patch to 0 if empty
+  [ -z "$patch" ] && patch=0
+
+  # pip-tools 7.5.2+ is compatible with pip 25.3+ (fixed AttributeError on use_pep517)
+  # See: https://github.com/jazzband/pip-tools/issues/2252
+  if [ "$major" -gt 7 ] || \
+     ([ "$major" -eq 7 ] && [ "$minor" -gt 5 ]) || \
+     ([ "$major" -eq 7 ] && [ "$minor" -eq 5 ] && [ "$patch" -ge 2 ]); then
+    echo "pip<26"  # Safe for pip 25.x series
+    log_debug "pip-tools $piptools_version supports pip 25.x, using constraint: pip<26"
+  else
+    echo "pip<25.2"  # Conservative for pip-tools < 7.5.2
+    log_debug "pip-tools $piptools_version requires constraint: pip<25.2"
+  fi
+}
+
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.8.2 - Intelligent Pip Upgrades"
+log_info "Base Environment Setup Script v3.9.0 - Dynamic Constraints & Security"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -1589,30 +1624,36 @@ for key in OPENAI_API_KEY XAI_API_KEY GOOGLE_API_KEY GITHUB_TOKEN GITHUB_EMAIL G
 done
 
 # Install pip-tools and ensure version locking is supported (with graceful error handling)
-# Pin pip to < 25.2 for compatibility with pip-tools 7.5.1
+# Use dynamic pip constraint based on pip-tools version
 echo "📦 Installing/upgrading pip, setuptools, and wheel..."
 
 # Check current pip version
 CURRENT_PIP=$(pip --version 2>/dev/null | awk '{print $2}' || echo "unknown")
 log_info "Current pip version: $CURRENT_PIP"
 
-# Find latest pip version within our <25.2 constraint
-echo "🔍 Checking for latest pip version within compatibility constraint (<25.2)..."
+# Get dynamic pip constraint based on pip-tools version
+PIP_CONSTRAINT=$(get_safe_pip_constraint)
+log_info "Using dynamic pip constraint: $PIP_CONSTRAINT"
+
+# Extract max version from constraint for searching (e.g., "pip<26" -> "26")
+CONSTRAINT_MAX=$(echo "$PIP_CONSTRAINT" | sed 's/pip<//')
+
+# Find latest pip version within our dynamic constraint
+echo "🔍 Checking for latest pip version within compatibility constraint ($PIP_CONSTRAINT)..."
 LATEST_COMPATIBLE_PIP=$(python -m pip index versions pip 2>/dev/null | grep "Available versions:" | cut -d: -f2 | tr ',' '\n' | sed 's/^ *//g' | while read version; do
   major=$(echo "$version" | cut -d. -f1)
-  minor=$(echo "$version" | cut -d. -f2)
-  if [ -n "$version" ] && ([ "$major" -lt 25 ] || ([ "$major" -eq 25 ] && [ "$minor" -lt 2 ])); then
+  if [ -n "$version" ] && [ "$major" -lt "$CONSTRAINT_MAX" ]; then
     echo "$version"
     break
   fi
 done)
 
 if [ -n "$LATEST_COMPATIBLE_PIP" ] && [ "$LATEST_COMPATIBLE_PIP" != "$CURRENT_PIP" ]; then
-  echo "   Upgrading pip $CURRENT_PIP → $LATEST_COMPATIBLE_PIP (within <25.2 constraint)"
+  echo "   Upgrading pip $CURRENT_PIP → $LATEST_COMPATIBLE_PIP (within $PIP_CONSTRAINT)"
   TARGET_PIP="pip==$LATEST_COMPATIBLE_PIP"
 else
   echo "   pip $CURRENT_PIP is up-to-date within constraint"
-  TARGET_PIP="pip<25.2"
+  TARGET_PIP="$PIP_CONSTRAINT"
 fi
 
 set +e
@@ -2551,8 +2592,11 @@ if [ "$UPDATE_MODE" = "1" ]; then
   CURRENT_PIP=$(pip --version | awk '{print $2}')
   CURRENT_PIP_TOOLS=$(pip show pip-tools 2>/dev/null | grep Version | awk '{print $2}' || echo "not installed")
 
+  # Get dynamic pip constraint
+  CURRENT_PIP_CONSTRAINT=$(get_safe_pip_constraint)
+
   echo ""
-  echo "📦 Current pip: $CURRENT_PIP (pinned to <25.2 for pip-tools compatibility)"
+  echo "📦 Current pip: $CURRENT_PIP (constraint: $CURRENT_PIP_CONSTRAINT based on pip-tools compatibility)"
   echo "📦 Current pip-tools: $CURRENT_PIP_TOOLS"
 
   # Check for latest pip version (within compatibility constraint)
@@ -2560,13 +2604,14 @@ if [ "$UPDATE_MODE" = "1" ]; then
   PIP_UPDATE_AVAILABLE=0
 
   if [ "$LATEST_PIP" != "unknown" ]; then
-    # Check if pip update is available within our <25.2 constraint
+    # Check if pip update is available within our dynamic constraint
+    CONSTRAINT_MAX_VERSION=$(echo "$CURRENT_PIP_CONSTRAINT" | sed 's/pip<//')
     LATEST_PIP_MAJOR=$(echo "$LATEST_PIP" | cut -d. -f1)
-    LATEST_PIP_MINOR=$(echo "$LATEST_PIP" | cut -d. -f2)
 
-    if [ "$LATEST_PIP_MAJOR" -lt 25 ] || ([ "$LATEST_PIP_MAJOR" -eq 25 ] && [ "$LATEST_PIP_MINOR" -lt 2 ]); then
+    # Check if latest pip is within our constraint
+    if [ "$LATEST_PIP_MAJOR" -lt "$CONSTRAINT_MAX_VERSION" ]; then
       if [ "$CURRENT_PIP" != "$LATEST_PIP" ]; then
-        echo "  📦 pip update available: $CURRENT_PIP → $LATEST_PIP (within compatibility constraint)"
+        echo "  📦 pip update available: $CURRENT_PIP → $LATEST_PIP (within $CURRENT_PIP_CONSTRAINT)"
         PIP_UPDATE_AVAILABLE=1
         NEW_PIP_VERSION=$LATEST_PIP
       fi
@@ -2991,9 +3036,11 @@ if [ "$UPDATE_MODE" = "1" ]; then
       echo "✅ Virtual environment recreated with Python $LATEST_PYTHON"
       log_info "Virtual environment recreated successfully"
 
-      # Upgrade pip and pip-tools in new venv
+      # Upgrade pip and pip-tools in new venv with dynamic constraint
       log_verbose "Upgrading pip and pip-tools in new venv"
-      pip install --disable-pip-version-check --upgrade "pip<25.2" setuptools wheel pip-tools 2>&1 | grep -v "^\[notice\]" || true
+      VENV_PIP_CONSTRAINT=$(get_safe_pip_constraint)
+      log_verbose "Using dynamic pip constraint: $VENV_PIP_CONSTRAINT"
+      pip install --disable-pip-version-check --upgrade "$VENV_PIP_CONSTRAINT" setuptools wheel pip-tools 2>&1 | grep -v "^\[notice\]" || true
       log_verbose "Installed: pip $(pip --version 2>/dev/null | awk '{print $2}'), pip-tools $(pip show pip-tools 2>/dev/null | grep Version | awk '{print $2}')"
       echo "✅ pip and pip-tools installed in new venv"
       log_info "pip and pip-tools upgraded in new venv"
@@ -3012,15 +3059,16 @@ if [ "$UPDATE_MODE" = "1" ]; then
       TOOLCHAIN_UPDATES_APPLIED=1
     elif [ "$PIP_UPDATE_AVAILABLE" = "1" ]; then
       echo "📦 Updating pip..."
-      pip install --disable-pip-version-check --upgrade "pip<25.2" 2>&1 | grep -v "^\[notice\]" || true
+      UPDATE_PIP_CONSTRAINT=$(get_safe_pip_constraint)
+      pip install --disable-pip-version-check --upgrade "$UPDATE_PIP_CONSTRAINT" 2>&1 | grep -v "^\[notice\]" || true
       echo "✅ pip updated to $(pip --version 2>/dev/null | awk '{print $2}')"
       TOOLCHAIN_UPDATES_APPLIED=1
     fi
 
-    # Update pip constraint in setup script if needed
+    # Note: pip constraint is now dynamically determined based on pip-tools version
+    # No manual script updates needed - constraint adapts automatically
     if [ -n "$NEW_PIP_VERSION" ]; then
-      NEXT_MAJOR=$(echo "$NEW_PIP_VERSION" | awk -F. '{print $1"."$2+0.1}')
-      echo "💡 Consider updating pip constraint in setup_base_env.sh from 'pip<25.2' to 'pip<$NEXT_MAJOR'"
+      echo "💡 Pip constraint dynamically adapts to pip-tools version (currently: $(get_safe_pip_constraint))"
     fi
   fi
 
@@ -3417,6 +3465,74 @@ log_stage "STAGE: Installing packages"
 # Disable error trapping (installation phase complete)
 set +e
 trap - ERR
+
+echo ""
+echo "🔒 SECURITY VULNERABILITY AUDIT"
+echo "--------------------------------"
+
+# Check if pip-audit is installed, install if missing
+if ! pip show pip-audit >/dev/null 2>&1; then
+  echo "📦 Installing pip-audit for security scanning..."
+  pip install --disable-pip-version-check pip-audit 2>&1 | grep -v "^\[notice\]" || true
+fi
+
+# Run security audit
+echo "🔍 Scanning for known security vulnerabilities..."
+log_info "Running pip-audit security scan"
+
+# Run pip-audit and capture results
+if pip-audit --progress-spinner=off 2>&1 | tee /tmp/pip-audit-$$.log; then
+  echo "✅ No known security vulnerabilities found"
+  log_info "Security audit: PASSED (no vulnerabilities)"
+else
+  AUDIT_EXIT_CODE=$?
+
+  # Check if there were actual vulnerabilities found (exit code 1) vs other errors
+  if [ $AUDIT_EXIT_CODE -eq 1 ]; then
+    echo ""
+    echo "⚠️  Security vulnerabilities detected!"
+    echo ""
+
+    # Count vulnerabilities
+    VULN_COUNT=$(grep -c "Found" /tmp/pip-audit-$$.log || echo "0")
+    echo "   Found $VULN_COUNT package(s) with known vulnerabilities"
+    echo ""
+
+    # Ask user if they want to attempt automatic fixes
+    read -p "Attempt automatic fixes with pip-audit --fix? (y/N): " -n 1 -r
+    echo
+
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      echo "🔧 Attempting automatic vulnerability fixes..."
+      log_info "Running pip-audit --fix"
+
+      if pip-audit --fix --progress-spinner=off 2>&1 | tee /tmp/pip-audit-fix-$$.log; then
+        echo "✅ Vulnerabilities fixed successfully"
+        log_info "Security audit: Vulnerabilities fixed"
+
+        # Recompile requirements.txt with updated versions
+        echo "📝 Recompiling requirements.txt with updated package versions..."
+        pip-compile --quiet requirements.in --output-file=requirements.txt
+        echo "✅ requirements.txt updated"
+      else
+        echo "⚠️  Some vulnerabilities could not be automatically fixed"
+        echo "   Please review the report above and update packages manually"
+        log_warn "Security audit: Some vulnerabilities remain"
+      fi
+    else
+      echo "⚠️  Continuing with known vulnerabilities"
+      echo "   Consider updating vulnerable packages manually"
+      log_warn "Security audit: Vulnerabilities detected but not fixed"
+    fi
+  else
+    echo "⚠️  pip-audit encountered an error (exit code: $AUDIT_EXIT_CODE)"
+    echo "   Continuing installation, but security status unknown"
+    log_warn "Security audit: Error running pip-audit"
+  fi
+fi
+
+# Cleanup temporary audit logs
+rm -f /tmp/pip-audit-$$.log /tmp/pip-audit-fix-$$.log
 
 echo ""
 echo "🏥 POST-INSTALLATION HEALTH CHECKS"
