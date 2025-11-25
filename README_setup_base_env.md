@@ -1,12 +1,14 @@
 # Base Environment Setup Script
 
-**Version:** 3.10.0 (November 2025) - **Production-Grade with Smart Rust Detection & PyTorch Safety Net**
+**Version:** 3.10.3 (November 2025) - **Production-Grade with Smart Rust Detection & PyTorch Safety Net**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.11-3.13 (adaptive selection based on compatibility matrix)
 
 ## Overview
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection, smart Rust toolchain installation, and PyTorch safety checks.
+
+**✨ NEW in v3.10.3:** Critical bug fixes for `--update` mode (the primary use case). Fixed missing PyTorch safety check in UPDATE MODE, pip version comparison integer error, directory handling issues, and undefined variable bugs. All safety features now work correctly in both normal and update modes.
 
 **✨ NEW in v3.10.0:**
 
@@ -24,7 +26,10 @@ This script creates a comprehensive, reproducible data science environment with 
 
 ### PyTorch Safety Net (DEFENSE-IN-DEPTH)
 - **Critical compatibility check:** Blocks installation if Python 3.13 + PyTorch + macOS 15.1+ + Apple Silicon detected
-- **Package version check integration:** Added to PACKAGE VERSION CHECK section (runs after Python installation)
+- **Dual-location protection:** PyTorch checks in TWO locations for true defense-in-depth:
+  - **Location 1:** Python Version Compatibility section (line 1774) - for normal installations
+  - **Location 2:** Package Version Check section (line 3274) - for UPDATE MODE
+- **UPDATE MODE coverage:** v3.10.2+ ensures `--update` mode (primary use case) has full PyTorch protection
 - **Defense-in-depth:** Catches incompatibility even if adaptive detection disabled (--no-adaptive)
 - **Clear error messaging:** Displays critical error with exact configuration and required remediation steps
 - **Prevents mutex hang:** Stops installation before PyTorch import causes indefinite hang

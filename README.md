@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.10.0 (November 2025) - **Production-Grade with Smart Rust Detection & PyTorch Safety Net**
+**Version:** 3.10.3 (November 2025) - **Production-Grade with Smart Rust Detection & PyTorch Safety Net**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.11-3.13 (adaptive selection based on compatibility matrix)
 
@@ -8,7 +8,9 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection, smart Rust toolchain installation, and PyTorch safety checks.
 
-**✨ NEW in v3.10:** Smart Rust Detection & PyTorch Safety Net. Automatic Rust toolchain installation when Rust-based packages detected (polars, ruff, pydantic-core, etc.). PyTorch safety check blocks Python 3.13 + PyTorch + macOS 15.1+ + Apple Silicon incompatibility even if --no-adaptive used. Defense-in-depth protection.
+**✨ NEW in v3.10.3:** Critical bug fixes for --update mode (primary use case). Fixed missing PyTorch safety check in UPDATE MODE, pip version comparison error, directory handling issues, and undefined variable bugs. All safety features now work correctly in both normal and update modes.
+
+**✨ v3.10:** Smart Rust Detection & PyTorch Safety Net. Automatic Rust toolchain installation when Rust-based packages detected (polars, ruff, pydantic-core, etc.). PyTorch safety checks in TWO locations for defense-in-depth: normal installation AND update mode. Blocks Python 3.13 + PyTorch + macOS 15.1+ + Apple Silicon incompatibility.
 
 **v3.2 refinements (6):** Stale lock detection, stage logging in lock file, smart constraints (8 packages), adaptive conflict resolution (2-tier), early exit optimization.
 
