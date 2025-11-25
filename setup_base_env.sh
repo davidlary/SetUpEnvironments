@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.11.3 (November 2025)
+# Version: 3.11.4 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -11,6 +11,12 @@
 #           detection and installation, PyTorch safety checks, self-supervision framework,
 #           automatic bash upgrade to 4.0+ for modern features.
 #
+# v3.11.4 Bugfix: Make git config non-fatal (November 25, 2025)
+#   - CRITICAL FIX: Wrapped git config operation to make failures non-fatal
+#   - Bug: Git config failure (due to YAML parsing bug) caused script exit
+#   - Impact: Script couldn't continue past git configuration despite it being optional
+#   - Fix: Added `if ! ... then log_warn` wrapper (lines 2439-2447)
+#   - Script now continues to pip-tools and package installation
 # v3.11.3 Bugfix: Fix verification function execution (November 25, 2025)
 #   - CRITICAL FIX: Moved `set -e` to AFTER verification function completes
 #   - Bug: `set -e` re-enabled at line 749 before verification, causing silent exit
@@ -946,7 +952,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.11.3 - Self-Supervision Framework (Fully Functional)"
+log_info "Base Environment Setup Script v3.11.4 - Self-Supervision Framework (Fully Functional)"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -2435,14 +2441,16 @@ if [ -f "$API_KEYS_YAML" ]; then
   if [ -n "$GITHUB_EMAIL" ] && [ "$GITHUB_EMAIL" != "your-github-email-here" ]; then
     echo "🔧 Configuring git with credentials from .env-keys.yml..."
 
-    # Use self-supervision framework for git configuration
-    perform_verified_operation \
+    # Use self-supervision framework for git configuration (non-fatal due to YAML parsing bug)
+    if ! perform_verified_operation \
       "Configure git with $GITHUB_EMAIL" \
       "git config --global user.email \"$GITHUB_EMAIL\" && git config --global user.name \"$GITHUB_NAME\"" \
       "verify_git_config \"$GITHUB_EMAIL\" \"$GITHUB_NAME\"" \
       "git:email=$GITHUB_EMAIL:name=$GITHUB_NAME" \
       "" \
-      2
+      2; then
+      log_warn "Git configuration failed - continuing anyway (known YAML parsing issue)"
+    fi
 
     # Set local repository config (if we're in a git repo)
     if [ -d .git ]; then
