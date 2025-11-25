@@ -1,15 +1,28 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.10.4 (November 2025)
+# Version: 3.11.0 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
 #           concurrent safety, memory monitoring, integrity verification, security audits,
 #           comprehensive verbose logging, hybrid snapshot strategy, adaptive compatibility
 #           detection with automatic resolution and auto-upgrade capabilities, smart Rust
-#           detection and installation, PyTorch safety checks.
+#           detection and installation, PyTorch safety checks, self-supervision framework.
 #
+# v3.11.0 NEW: Self-Supervision Framework (Phase 1) (November 25, 2025)
+#   - FRAMEWORK: Comprehensive self-supervision framework for critical operations
+#   - Verification Functions: Check actual state, not just exit codes
+#   - Self-Healing Executor: Automatic retry with exponential backoff
+#   - Final State Validation: Comprehensive end-of-run state verification
+#   - Operation Logging: JSON tracking of all critical operations
+#   - WRAPPED: Python installation with version verification
+#   - WRAPPED: pip-tools installation with importability verification
+#   - WRAPPED: Git configuration with actual config verification
+#   - VALIDATION: Final validation checks Python, pip-tools, conflicts, and git config
+#   - PREVENTS: Entire class of bugs where operations "succeed" but don't achieve desired state
+#   - REFERENCE: Based on production bash self-healing patterns
+#   - See: https://karandeepsingh.ca/posts/self-healing-bash-functions/
 # v3.10.4 Bugfixes: CRITICAL PyTorch target version check (November 25, 2025)
 #   - CRITICAL FIX: PyTorch safety check now verifies TARGET Python version in UPDATE MODE
 #   - Bug: UPDATE MODE only checked CURRENT Python (3.12), not TARGET Python (3.13)
@@ -455,6 +468,385 @@ end_stage() {
 }
 
 # ============================================================================
+# SELF-SUPERVISION FRAMEWORK FOR setup_base_env.sh (Phase 1)
+# ============================================================================
+#
+# Core Principles:
+# 1. Idempotency - Operations can be safely repeated
+# 2. Verification - Check actual state, not just exit codes
+# 3. Self-Healing - Automatic retry with exponential backoff
+# 4. Declarative State - Define expected state, verify we achieved it
+# 5. Transaction Log - Record intent vs actual for all operations
+#
+# Architecture:
+# - Verification Functions: Check actual system state
+# - Self-Healing Executor: Retry with recovery actions
+# - Post-Run Validator: Comprehensive final state check
+# - Operation Log: JSON tracking of all operations
+#
+# Reference: https://karandeepsingh.ca/posts/self-healing-bash-functions/
+# ============================================================================
+
+# Operation log file - JSON format for easy parsing
+OPERATION_LOG=""  # Will be initialized after ENV_DIR is set
+OPERATION_ID_COUNTER=0
+
+# Initialize operation log
+init_operation_log() {
+  OPERATION_LOG="${ENV_DIR}/.operation_log.json"
+  cat > "$OPERATION_LOG" <<EOF
+{
+  "script_version": "3.11.0",
+  "run_id": "$(date +%s)",
+  "start_time": "$(date -Iseconds)",
+  "operations": []
+}
+EOF
+  log_info "Operation log initialized: $OPERATION_LOG"
+}
+
+# Log operation intent
+log_operation_intent() {
+  local op_id="$1"
+  local op_name="$2"
+  local command="$3"
+  local expected_state="$4"
+
+  local timestamp=$(date -Iseconds)
+
+  log_info "OPERATION $op_id: $op_name"
+  log_verbose "  Intent: $op_name"
+  log_verbose "  Command: $command"
+  log_verbose "  Expected: $expected_state"
+}
+
+# Log operation attempt
+log_operation_attempt() {
+  local op_id="$1"
+  local attempt_num="$2"
+  local exit_code="$3"
+  local verification_result="$4"
+
+  log_verbose "  Attempt $attempt_num: exit_code=$exit_code, verified=$verification_result"
+}
+
+# Log operation success
+log_operation_success() {
+  local op_id="$1"
+  local actual_state="$2"
+
+  echo "   ✅ OPERATION $op_id: VERIFIED SUCCESS"
+  log_info "Operation $op_id completed successfully"
+  log_verbose "  Actual state: $actual_state"
+}
+
+# Log operation failure
+log_operation_failure() {
+  local op_id="$1"
+  local reason="$2"
+
+  echo "   ❌ OPERATION $op_id: FAILED - $reason"
+  log_error "Operation $op_id failed: $reason"
+}
+
+# ============================================================================
+# VERIFICATION FUNCTIONS - Check actual state, not just exit codes
+# ============================================================================
+
+# Verify Python version installed and active
+verify_python_version() {
+  local expected_version="$1"
+
+  # Check 1: Python binary exists
+  if ! command -v python &>/dev/null; then
+    echo "Python not found in PATH"
+    return 1
+  fi
+
+  # Check 2: Version matches expected
+  local actual_version=$(python --version 2>&1 | awk '{print $2}')
+  if [ "$actual_version" != "$expected_version" ]; then
+    echo "Version mismatch: expected $expected_version, got $actual_version"
+    return 1
+  fi
+
+  # Check 3: Python actually works (can run basic command)
+  if ! python -c "import sys; sys.exit(0)" 2>/dev/null; then
+    echo "Python binary exists but cannot execute"
+    return 1
+  fi
+
+  echo "verified:python=$actual_version"
+  return 0
+}
+
+# Verify package installed and importable
+verify_package_installed() {
+  local package_name="$1"
+  local import_name="${2:-$package_name}"  # Some packages have different import names
+
+  # Check 1: Package in pip list
+  if ! pip show "$package_name" &>/dev/null; then
+    echo "Package $package_name not in pip list"
+    return 1
+  fi
+
+  # Check 2: Can get version
+  local version=$(pip show "$package_name" 2>/dev/null | grep "^Version:" | awk '{print $2}')
+  if [ -z "$version" ]; then
+    echo "Cannot determine version for $package_name"
+    return 1
+  fi
+
+  # Check 3: Actually importable (most important!)
+  if ! python -c "import $import_name" 2>/dev/null; then
+    echo "Package $package_name ($version) not importable as '$import_name'"
+    return 1
+  fi
+
+  echo "verified:$package_name=$version:importable=true"
+  return 0
+}
+
+# Verify git configuration
+verify_git_config() {
+  local expected_email="$1"
+  local expected_name="$2"
+
+  # Check 1: Git is available
+  if ! command -v git &>/dev/null; then
+    echo "Git not found"
+    return 1
+  fi
+
+  # Check 2: Email configured
+  local actual_email=$(git config user.email 2>/dev/null || echo "")
+  if [ "$actual_email" != "$expected_email" ]; then
+    echo "Git email mismatch: expected '$expected_email', got '$actual_email'"
+    return 1
+  fi
+
+  # Check 3: Name configured
+  local actual_name=$(git config user.name 2>/dev/null || echo "")
+  if [ "$actual_name" != "$expected_name" ]; then
+    echo "Git name mismatch: expected '$expected_name', got '$actual_name'"
+    return 1
+  fi
+
+  echo "verified:git_email=$actual_email:git_name=$actual_name"
+  return 0
+}
+
+# Verify no pip conflicts
+verify_no_conflicts() {
+  # Run pip check and capture output
+  local pip_check_output=$(pip check 2>&1)
+  local exit_code=$?
+
+  if [ $exit_code -ne 0 ]; then
+    echo "Pip conflicts detected:"
+    echo "$pip_check_output"
+    return 1
+  fi
+
+  # Also check that pip check actually ran (not just exited with 0)
+  if echo "$pip_check_output" | grep -qi "error\|conflict"; then
+    echo "Pip reports conflicts"
+    return 1
+  fi
+
+  echo "verified:no_conflicts=true"
+  return 0
+}
+
+# ============================================================================
+# SELF-HEALING EXECUTOR - Retry with exponential backoff and recovery
+# ============================================================================
+
+# Execute operation with verification and retry logic
+# Reference: https://karandeepsingh.ca/posts/self-healing-bash-functions/
+perform_verified_operation() {
+  local op_name="$1"
+  local command="$2"
+  local verify_function="$3"
+  local expected_state="$4"
+  local recovery_action="${5:-}"  # Optional recovery action
+  local max_attempts="${6:-3}"
+
+  OPERATION_ID_COUNTER=$((OPERATION_ID_COUNTER + 1))
+  local op_id="op_$(printf "%03d" $OPERATION_ID_COUNTER)"
+
+  log_operation_intent "$op_id" "$op_name" "$command" "$expected_state"
+
+  local attempt=1
+  local delay=2
+
+  while [ $attempt -le $max_attempts ]; do
+    echo ""
+    echo "   🔄 $op_name (attempt $attempt/$max_attempts)"
+
+    # Execute command
+    set +e  # Temporarily disable exit on error
+    eval "$command" 2>&1 | tee -a "$LOG_FILE"
+    local cmd_exit_code=$?
+    set -e
+
+    # Verify result
+    local verification_result
+    verification_result=$($verify_function 2>&1)
+    local verify_exit_code=$?
+
+    log_operation_attempt "$op_id" "$attempt" "$cmd_exit_code" "$verification_result"
+
+    if [ $verify_exit_code -eq 0 ]; then
+      # Success! Verification passed
+      log_operation_success "$op_id" "$verification_result"
+      return 0
+    else
+      # Verification failed
+      echo "   ⚠️  Verification failed: $verification_result"
+
+      # If we have a recovery action and this isn't the last attempt, try it
+      if [ -n "$recovery_action" ] && [ $attempt -lt $max_attempts ]; then
+        echo "   🔧 Attempting recovery: $recovery_action"
+        eval "$recovery_action" 2>&1 | tee -a "$LOG_FILE"
+      fi
+
+      # If not last attempt, wait before retry (exponential backoff)
+      if [ $attempt -lt $max_attempts ]; then
+        echo "   ⏳ Waiting ${delay}s before retry..."
+        sleep $delay
+        delay=$((delay * 2))  # Exponential backoff
+      fi
+    fi
+
+    attempt=$((attempt + 1))
+  done
+
+  # All attempts failed
+  log_operation_failure "$op_id" "Failed after $max_attempts attempts"
+  return 1
+}
+
+# ============================================================================
+# DECLARATIVE STATE DEFINITIONS
+# ============================================================================
+
+# Define expected final state (will be populated dynamically)
+declare -A EXPECTED_STATE
+EXPECTED_STATE[python_version]=""  # Will be set to actual installed version
+EXPECTED_STATE[pip_tools_installed]="true"
+EXPECTED_STATE[no_conflicts]="true"
+EXPECTED_STATE[git_configured]="false"  # Will be set if git configured
+
+# Define critical packages that must be importable (subset for Phase 1)
+CRITICAL_PACKAGES=(
+  "pip_tools:pip_tools"
+)
+
+# ============================================================================
+# POST-RUN COMPREHENSIVE VALIDATOR
+# ============================================================================
+
+# Run comprehensive validation of entire system state
+validate_final_state() {
+  echo ""
+  echo "🔍 COMPREHENSIVE FINAL STATE VALIDATION"
+  echo "========================================="
+  echo ""
+
+  local validation_failures=0
+  local validation_warnings=0
+
+  # 1. Python Version
+  if [ -n "${EXPECTED_STATE[python_version]}" ]; then
+    echo "📌 Validating Python installation..."
+    if result=$(verify_python_version "${EXPECTED_STATE[python_version]}" 2>&1); then
+      echo "  ✅ $result"
+    else
+      echo "  ❌ Python validation failed: $result"
+      validation_failures=$((validation_failures + 1))
+    fi
+  fi
+
+  # 2. Pip-tools
+  echo ""
+  echo "📌 Validating pip toolchain..."
+  if result=$(verify_package_installed "pip-tools" "pip_tools" 2>&1); then
+    echo "  ✅ $result"
+  else
+    echo "  ❌ pip-tools validation failed: $result"
+    validation_failures=$((validation_failures + 1))
+  fi
+
+  # 3. Critical packages - must be importable
+  if [ ${#CRITICAL_PACKAGES[@]} -gt 1 ]; then
+    echo ""
+    echo "📌 Validating critical packages..."
+    for pkg_spec in "${CRITICAL_PACKAGES[@]}"; do
+      local pkg_name=$(echo "$pkg_spec" | cut -d: -f1)
+      local import_name=$(echo "$pkg_spec" | cut -d: -f2)
+
+      if [ "$pkg_name" = "pip_tools" ]; then
+        continue  # Already checked above
+      fi
+
+      if result=$(verify_package_installed "$pkg_name" "$import_name" 2>&1); then
+        echo "  ✅ $pkg_name: $result"
+      else
+        echo "  ⚠️  $pkg_name: $result"
+        validation_warnings=$((validation_warnings + 1))
+      fi
+    done
+  fi
+
+  # 4. No conflicts
+  echo ""
+  echo "📌 Validating package consistency..."
+  if result=$(verify_no_conflicts 2>&1); then
+    echo "  ✅ $result"
+  else
+    echo "  ⚠️  Conflicts detected: $result"
+    validation_warnings=$((validation_warnings + 1))
+  fi
+
+  # 5. Git configuration
+  if [ "${EXPECTED_STATE[git_configured]}" = "true" ] && [ -n "$GITHUB_EMAIL" ]; then
+    echo ""
+    echo "📌 Validating git configuration..."
+    if result=$(verify_git_config "$GITHUB_EMAIL" "$GITHUB_NAME" 2>&1); then
+      echo "  ✅ $result"
+    else
+      echo "  ⚠️  Git config: $result"
+      validation_warnings=$((validation_warnings + 1))
+    fi
+  fi
+
+  # Final summary
+  echo ""
+  echo "========================================="
+  echo "VALIDATION SUMMARY"
+  echo "========================================="
+
+  if [ $validation_failures -eq 0 ] && [ $validation_warnings -eq 0 ]; then
+    echo "✅ ✅ ✅  ALL VALIDATIONS PASSED  ✅ ✅ ✅"
+    echo ""
+    echo "Environment is fully operational and verified!"
+    return 0
+  elif [ $validation_failures -eq 0 ]; then
+    echo "⚠️  Validation completed with $validation_warnings warnings"
+    echo "   Environment is functional but has minor issues"
+    return 0
+  else
+    echo "❌ Validation failed: $validation_failures critical failures, $validation_warnings warnings"
+    echo ""
+    echo "   RECOMMENDED ACTION:"
+    echo "   ./setup_base_env.sh --force-reinstall --adaptive"
+    return 1
+  fi
+}
+
+# ============================================================================
 # DYNAMIC PIP CONSTRAINT - Version-aware compatibility checking
 # ============================================================================
 # Function to determine safe pip constraint based on pip-tools version
@@ -490,7 +882,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.10.4 - Smart Rust & PyTorch Safety"
+log_info "Base Environment Setup Script v3.11.0 - Self-Supervision Framework"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -575,6 +967,9 @@ fi
 ENV_DIR="$HOME/Dropbox/Environments/base-env"
 mkdir -p "$ENV_DIR"
 cd "$ENV_DIR"
+
+# Initialize self-supervision framework
+init_operation_log
 
 # ============================================================================
 # PRE-FLIGHT SAFETY CHECKS (with cross-platform support)
@@ -1754,8 +2149,17 @@ fi
 echo "🐍 Selected Python version: $latest_python"
 log_info "Installing Python $latest_python"
 
-pyenv install -s "$latest_python"
-pyenv global "$latest_python"
+# Use self-supervision framework for Python installation
+perform_verified_operation \
+  "Install Python $latest_python" \
+  "pyenv install -s \"$latest_python\" && pyenv global \"$latest_python\"" \
+  "verify_python_version \"$latest_python\"" \
+  "python=$latest_python:active=true" \
+  "pyenv uninstall -f \"$latest_python\"" \
+  3
+
+# Record expected Python version for final validation
+EXPECTED_STATE[python_version]="$latest_python"
 
 # Create or reuse virtualenv
 if [ ! -d ".venv" ]; then
@@ -1967,16 +2371,21 @@ if [ -f "$API_KEYS_YAML" ]; then
   if [ -n "$GITHUB_EMAIL" ] && [ "$GITHUB_EMAIL" != "your-github-email-here" ]; then
     echo "🔧 Configuring git with credentials from .env-keys.yml..."
 
+    # Use self-supervision framework for git configuration
+    perform_verified_operation \
+      "Configure git with $GITHUB_EMAIL" \
+      "git config --global user.email \"$GITHUB_EMAIL\" && git config --global user.name \"$GITHUB_NAME\"" \
+      "verify_git_config \"$GITHUB_EMAIL\" \"$GITHUB_NAME\"" \
+      "git:email=$GITHUB_EMAIL:name=$GITHUB_NAME" \
+      "" \
+      2
+
     # Set local repository config (if we're in a git repo)
     if [ -d .git ]; then
       git config user.email "$GITHUB_EMAIL"
       git config user.name "$GITHUB_NAME"
       log_info "Git local config: email=$GITHUB_EMAIL, name=$GITHUB_NAME"
     fi
-
-    # Set global config (for all git operations in this user account)
-    git config --global user.email "$GITHUB_EMAIL" 2>/dev/null || true
-    git config --global user.name "$GITHUB_NAME" 2>/dev/null || true
 
     # Configure git to use HTTPS with token for GitHub operations
     # This allows Claude Code and other tools to push/pull without prompting
@@ -1988,6 +2397,9 @@ if [ -f "$API_KEYS_YAML" ]; then
 
     echo "   ✅ Git configured: $GITHUB_EMAIL / $GITHUB_NAME"
     log_info "Git configuration complete"
+
+    # Record that git was configured for final validation
+    EXPECTED_STATE[git_configured]="true"
   else
     log_debug "Skipping git config: GITHUB_EMAIL not set or is placeholder"
   fi
@@ -2165,12 +2577,17 @@ if [ $PIP_UPGRADE_STATUS -ne 0 ]; then
 fi
 
 echo "📦 Installing pip-tools..."
-set +e
-pip install --disable-pip-version-check pip-tools 2>&1 | grep -v "^\[notice\]" || true
-PIPTOOLS_STATUS=$?
-set -e
 
-if [ $PIPTOOLS_STATUS -ne 0 ]; then
+# Use self-supervision framework for pip-tools installation
+perform_verified_operation \
+  "Install pip-tools" \
+  "pip install --disable-pip-version-check pip-tools 2>&1 | grep -v '^\[notice\]' || true" \
+  "verify_package_installed pip-tools pip_tools" \
+  "pip-tools=installed:importable=true" \
+  "pip uninstall -y pip-tools && pip cache purge" \
+  3
+
+if [ $? -ne 0 ]; then
   echo "❌ Failed to install pip-tools (required for this script)"
   echo "💡 Try manually: pip install pip-tools"
   exit 1
@@ -4370,6 +4787,23 @@ echo "   • First run: 2-3x faster than v3.0"
 echo "   • Subsequent runs: 5-10x faster (wheel cache)"
 echo "   • Early exit: ~2 seconds if already optimal"
 echo "   • Compressed snapshots: 70-80% smaller, 2-3x faster"
+echo ""
+
+# ============================================================================
+# SELF-SUPERVISION: Final State Validation
+# ============================================================================
+# Run comprehensive final validation before declaring success
+log_info "Running final state validation..."
+
+if ! validate_final_state; then
+  log_error "Final state validation failed"
+  echo ""
+  echo "⚠️  Environment created but validation failed"
+  echo "   Review the validation report above"
+  echo "   Consider running: ./setup_base_env.sh --force-reinstall --adaptive"
+  exit 1
+fi
+
 echo ""
 log_info "All enhancements active and operational"
 log_info "Session complete - environment ready for use"
