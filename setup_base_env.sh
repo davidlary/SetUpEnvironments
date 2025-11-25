@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.11.2 (November 2025)
+# Version: 3.11.3 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -11,6 +11,13 @@
 #           detection and installation, PyTorch safety checks, self-supervision framework,
 #           automatic bash upgrade to 4.0+ for modern features.
 #
+# v3.11.3 Bugfix: Fix verification function execution (November 25, 2025)
+#   - CRITICAL FIX: Moved `set -e` to AFTER verification function completes
+#   - Bug: `set -e` re-enabled at line 749 before verification, causing silent exit
+#   - Impact: Script exited when verification returned non-zero (expected during retries)
+#   - Fix: Keep `set +e` active through verification, re-enable after (line 754)
+#   - Also: Added `eval` to verification function call for proper execution
+#   - Self-supervision framework now fully functional
 # v3.11.2 Bugfix: Add bash auto-upgrade + snapshot fix (November 25, 2025)
 #   - CRITICAL FIX: Added automatic bash upgrade from 3.2 to 5.x (macOS default → modern)
 #   - Auto-detects bash version, installs bash 5.x via Homebrew if needed
@@ -746,12 +753,12 @@ perform_verified_operation() {
     set +e  # Temporarily disable exit on error
     eval "$command" 2>&1 | tee -a "$LOG_FILE"
     local cmd_exit_code=$?
-    set -e
 
-    # Verify result
+    # Verify result (keep set +e active to prevent silent exits on verification failure)
     local verification_result
-    verification_result=$($verify_function 2>&1)
+    verification_result=$(eval "$verify_function" 2>&1)
     local verify_exit_code=$?
+    set -e  # Re-enable only after verification completes
 
     log_operation_attempt "$op_id" "$attempt" "$cmd_exit_code" "$verification_result"
 
@@ -939,7 +946,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.11.2 - Self-Supervision + Bash Upgrade + Non-Fatal Snapshot"
+log_info "Base Environment Setup Script v3.11.3 - Self-Supervision Framework (Fully Functional)"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
