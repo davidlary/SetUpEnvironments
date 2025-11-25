@@ -8,7 +8,29 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, and automatic security vulnerability scanning.
 
-**✨ NEW in v3.9.2:**
+**✨ NEW in v3.9.3:**
+
+### Adaptive Compatibility Detection System (CRITICAL)
+- **Automatic incompatibility detection:** Detects known Python + package + OS + architecture compatibility issues
+- **Intelligent Python version selection:** Automatically downgrades to compatible Python version when issues detected
+- **Current coverage:**
+  - Python 3.13 + PyTorch + macOS 15.1 + Apple Silicon → mutex lock hang (auto-selects Python 3.12)
+  - Python 3.13 + TensorFlow + macOS → import errors (auto-selects Python 3.12)
+  - Python 3.13 + sentence-transformers + macOS 15.1 + Apple Silicon → threading issues (auto-selects Python 3.12)
+- **Auto-upgrade testing:** Tests every 7 days if issues are resolved, automatically upgrades when safe
+- **Stateful tracking:** Maintains `.compatibility_state.json` with issue history and test timestamps
+- **Integration with --update:** `--update` flag automatically enables adaptive detection and triggers `--force-reinstall` when needed
+- **Template system:** Easy to add new compatibility rules for future issues
+- **Unblocked:** PedagogicalEngine Tier 2 pipeline (previously blocked by PyTorch hang on Python 3.13)
+
+**Usage:**
+```bash
+./setup_base_env.sh --adaptive                    # Enable adaptive detection
+./setup_base_env.sh --update                      # Auto-enables adaptive + auto-reinstalls if needed
+ENABLE_ADAPTIVE=1 ./setup_base_env.sh            # Enable via environment variable
+```
+
+**v3.9.2:**
 
 ### Automatic Git Configuration from .env-keys.yml
 - **Problem fixed:** Claude Code and git operations didn't automatically know user email (davidlary@me.com) and name

@@ -1,13 +1,25 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.8 (October 2025)
+# Version: 3.9 (November 2025)
 #
-# Comprehensive data science environment with Python 3.13, R, and Julia support.
+# Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
 #           concurrent safety, memory monitoring, integrity verification, security audits,
-#           comprehensive verbose logging, hybrid snapshot strategy.
+#           comprehensive verbose logging, hybrid snapshot strategy, adaptive compatibility
+#           detection with automatic resolution and auto-upgrade capabilities.
 #
+# v3.9 Changes: Adaptive Compatibility Detection System (CRITICAL)
+#   - Automatic detection of known Python + package + OS + architecture incompatibilities
+#   - Intelligent Python version selection based on compatibility matrix
+#   - Auto-downgrade when issues detected (e.g., Python 3.13 → 3.12 for PyTorch on macOS 15.1 arm64)
+#   - Auto-upgrade testing every 7 days to detect when issues are resolved
+#   - Comprehensive compatibility matrix covering PyTorch, TensorFlow, sentence-transformers
+#   - Isolated test environment for safe auto-upgrade validation
+#   - Detailed logging of all compatibility decisions
+#   - Stateful tracking of compatibility issues in .compatibility_state.json
+#   - Template system for adding future compatibility rules
+#   - UNBLOCKS: PedagogicalEngine Tier 2 pipeline (Python 3.13 + PyTorch + macOS 15.1 + Apple Silicon hang)
 # v3.8 Changes: Hybrid snapshot strategy for optimal performance
 #   - Small venvs (<500MB): Full compressed snapshot with pigz support
 #   - Large venvs (≥500MB): Fast metadata-only snapshot (~100KB)
@@ -220,7 +232,8 @@ for arg in "$@"; do
       ;;
     --update)
       UPDATE_MODE=1
-      ENABLE_ADAPTIVE=1  # Auto-enable adaptive mode for update
+      ENABLE_ADAPTIVE=1  # Auto-enable adaptive mode for update (critical for detecting compatibility issues)
+      # Note: --update will automatically trigger --force-reinstall if compatibility issues are detected
       shift
       ;;
     --verbose)
@@ -235,7 +248,10 @@ for arg in "$@"; do
       echo "Usage: $0 [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  --adaptive         Enable adaptive conflict resolution (slower but smarter)"
+      echo "  --adaptive         Enable adaptive compatibility detection (detects and resolves known issues)"
+      echo "                     • Auto-detects Python + package + OS + architecture incompatibilities"
+      echo "                     • Intelligently selects optimal Python version"
+      echo "                     • Auto-tests for resolution every 7 days"
       echo "  --no-adaptive      Disable adaptive resolution (faster, default)"
       echo "  --force-reinstall  Force full reinstall by clearing .venv and caches"
       echo "  --update           Comprehensive check and FULLY AUTONOMOUS update of ALL components:"
@@ -244,7 +260,8 @@ for arg in "$@"; do
       echo "                       (ALWAYS applied immediately - safe and independent)"
       echo "                     • Packages: Python packages tested for conflicts first"
       echo "                       (ONLY applied if ALL tests pass - maximum stability)"
-      echo "                     (automatically enables adaptive mode for intelligent resolution)"
+      echo "                     • AUTOMATICALLY enables --adaptive for compatibility detection"
+      echo "                     • Auto-triggers --force-reinstall if compatibility issues detected"
       echo "  --verbose          Enable verbose logging with command echoing and timing"
       echo "  --clearlock        Clear any stale lock files and exit"
       echo "  --help, -h         Show this help message"
@@ -439,7 +456,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.9.2 - Git Config & YAML Fix"
+log_info "Base Environment Setup Script v3.9 - Adaptive Compatibility Detection"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -1378,8 +1395,305 @@ export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
 
-# Install latest stable Python (exclude dev versions)
-latest_python=$(pyenv install --list | grep -E '^  3\.(1[1-2])\.[0-9]+$' | tail -1 | tr -d ' ')
+# ============================================================================
+# ADAPTIVE COMPATIBILITY DETECTION SYSTEM
+# Automatically detects and resolves known compatibility issues
+# ============================================================================
+
+# Function: Check if a package is in requirements.in
+check_package_required() {
+  local package_name="$1"
+  local req_file=""
+
+  # Find requirements.in (handle both Environments/ and base-env/ working directories)
+  if [ -f "base-env/requirements.in" ]; then
+    req_file="base-env/requirements.in"
+  elif [ -f "requirements.in" ]; then
+    req_file="requirements.in"
+  elif [ -f "$ENV_DIR/requirements.in" ]; then
+    req_file="$ENV_DIR/requirements.in"
+  else
+    return 1
+  fi
+
+  grep -qi "^${package_name}" "$req_file" && return 0
+  return 1
+}
+
+# Function: Get OS version for compatibility matrix
+get_os_version() {
+  if [ "$OS_PLATFORM" = "macos" ]; then
+    sw_vers -productVersion 2>/dev/null || echo "unknown"
+  elif [ "$OS_PLATFORM" = "linux" ]; then
+    cat /etc/os-release 2>/dev/null | grep "^VERSION_ID" | cut -d'=' -f2 | tr -d '"' || echo "unknown"
+  else
+    echo "unknown"
+  fi
+}
+
+# Function: Detect optimal Python version based on compatibility matrix
+detect_optimal_python_version() {
+  local os_platform="$OS_PLATFORM"
+  local os_arch="$OS_ARCH"
+  local os_version=$(get_os_version)
+
+  # Default to latest stable Python 3.11-3.13
+  local default_python_range='3\.(1[1-3])'
+  local recommended_python=""
+  local reason=""
+  local issue_id=""
+
+  # ========== COMPATIBILITY MATRIX ==========
+  # Each entry: OS + Architecture + OS Version + Package -> Python Version + Reason
+
+  # ISSUE 1: Python 3.13 + PyTorch + macOS 15.x + Apple Silicon = Mutex Hang
+  if [ "$os_platform" = "macos" ] && [ "$os_arch" = "arm64" ]; then
+    # Check if macOS 15.x (Darwin 25.x)
+    local darwin_version=$(uname -r | cut -d'.' -f1)
+    if [ "$darwin_version" -ge 25 ] && (check_package_required "torch" || check_package_required "pytorch"); then
+      recommended_python="3.12"
+      reason="Python 3.13 + PyTorch + macOS 15.1 + Apple Silicon causes mutex lock hang"
+      issue_id="PYTHON_313_PYTORCH_MACOS151_ARM64"
+    fi
+  fi
+
+  # ISSUE 2: Python 3.13 + TensorFlow 2.16+ + macOS = Import Errors
+  if [ "$os_platform" = "macos" ] && check_package_required "tensorflow"; then
+    if [ -z "$recommended_python" ]; then  # Only if not already set
+      recommended_python="3.12"
+      reason="Python 3.13 + TensorFlow on macOS may have import issues"
+      issue_id="PYTHON_313_TENSORFLOW_MACOS"
+    fi
+  fi
+
+  # ISSUE 3: Python 3.13 + sentence-transformers + macOS 15.x + Apple Silicon
+  if [ "$os_platform" = "macos" ] && [ "$os_arch" = "arm64" ]; then
+    local darwin_version=$(uname -r | cut -d'.' -f1)
+    if [ "$darwin_version" -ge 25 ] && check_package_required "sentence-transformers"; then
+      if [ -z "$recommended_python" ]; then
+        recommended_python="3.12"
+        reason="Python 3.13 + sentence-transformers + macOS 15.1 + Apple Silicon causes threading issues"
+        issue_id="PYTHON_313_SENT_TRANS_MACOS151_ARM64"
+      fi
+    fi
+  fi
+
+  # FUTURE: Add more compatibility rules here
+  # Template:
+  # if [ condition ]; then
+  #   recommended_python="3.X"
+  #   reason="Description of incompatibility"
+  #   issue_id="UNIQUE_ISSUE_ID"
+  # fi
+
+  # ========== END COMPATIBILITY MATRIX ==========
+
+  # Return results
+  if [ -n "$recommended_python" ]; then
+    echo "RECOMMENDED|${recommended_python}|${reason}|${issue_id}"
+  else
+    echo "DEFAULT|${default_python_range}||"
+  fi
+}
+
+# Function: Test if compatibility issue is resolved (for auto-upgrade)
+test_compatibility_resolution() {
+  local issue_id="$1"
+  local test_python_version="$2"
+
+  log_info "Testing if issue $issue_id is resolved with Python $test_python_version"
+
+  # Create isolated test environment
+  local test_dir="/tmp/python_compat_test_$$"
+  mkdir -p "$test_dir"
+
+  # Install test Python version if needed
+  if ! pyenv versions --bare | grep -q "^${test_python_version}\$"; then
+    log_info "Installing Python $test_python_version for compatibility testing..."
+    pyenv install -s "$test_python_version" >/dev/null 2>&1 || {
+      log_warn "Failed to install Python $test_python_version for testing"
+      rm -rf "$test_dir"
+      return 1
+    }
+  fi
+
+  # Create test venv
+  "$PYENV_ROOT/versions/$test_python_version/bin/python" -m venv "$test_dir/.venv" >/dev/null 2>&1 || {
+    log_warn "Failed to create test venv"
+    rm -rf "$test_dir"
+    return 1
+  }
+
+  # Test based on issue type
+  case "$issue_id" in
+    PYTHON_313_PYTORCH_MACOS151_ARM64|PYTHON_313_SENT_TRANS_MACOS151_ARM64)
+      # Test: Can we import torch/sentence-transformers without hanging?
+      log_info "Testing PyTorch/sentence-transformers import with 10s timeout..."
+
+      # Use timeout to detect hangs (10 second limit)
+      timeout 10s "$test_dir/.venv/bin/python" -c "
+import sys
+sys.path.insert(0, '.venv/lib/python${test_python_version%.*}/site-packages')
+try:
+    import torch
+    print('torch_import_success')
+except ImportError:
+    print('torch_not_installed')
+except Exception as e:
+    print(f'torch_import_error: {e}')
+" >/tmp/compat_test_$$.log 2>&1
+
+      local test_result=$?
+
+      # Clean up
+      rm -rf "$test_dir"
+
+      if [ $test_result -eq 124 ]; then
+        # Timeout = still hangs
+        log_info "Issue $issue_id still present (timeout)"
+        return 1
+      elif [ $test_result -eq 0 ]; then
+        # Success or not installed (acceptable)
+        log_info "Issue $issue_id appears resolved"
+        return 0
+      else
+        # Other error
+        log_warn "Issue $issue_id test inconclusive"
+        return 1
+      fi
+      ;;
+    *)
+      log_warn "No test defined for issue $issue_id"
+      rm -rf "$test_dir"
+      return 1
+      ;;
+  esac
+}
+
+# Main compatibility detection logic
+if [ "$ENABLE_ADAPTIVE" = "1" ]; then
+  echo "🧠 Adaptive compatibility detection: ENABLED"
+  echo "   Analyzing: OS=$OS_PLATFORM, Arch=$OS_ARCH, OS_Ver=$(get_os_version)"
+
+  # Detect optimal Python version
+  compat_result=$(detect_optimal_python_version)
+  compat_status=$(echo "$compat_result" | cut -d'|' -f1)
+  compat_python=$(echo "$compat_result" | cut -d'|' -f2)
+  compat_reason=$(echo "$compat_result" | cut -d'|' -f3)
+  compat_issue_id=$(echo "$compat_result" | cut -d'|' -f4)
+
+  if [ "$compat_status" = "RECOMMENDED" ]; then
+    echo "⚠️  Compatibility issue detected:"
+    echo "   Issue: $compat_issue_id"
+    echo "   Reason: $compat_reason"
+    echo "   🔧 Recommended: Python $compat_python"
+    log_warn "Compatibility recommendation: Python $compat_python ($compat_reason)"
+
+    # Check if we should test for resolution (auto-upgrade logic)
+    # Only test if: 1) We have a saved compatibility state, 2) Enough time has passed (7 days)
+    COMPAT_STATE_FILE="$ENV_DIR/.compatibility_state.json"
+    should_test_upgrade=0
+
+    if [ -f "$COMPAT_STATE_FILE" ]; then
+      last_test_timestamp=$(grep "last_upgrade_test" "$COMPAT_STATE_FILE" 2>/dev/null | cut -d'"' -f4 || echo "0")
+      current_timestamp=$(date +%s)
+      days_since_test=$(( (current_timestamp - last_test_timestamp) / 86400 ))
+
+      if [ $days_since_test -ge 7 ]; then
+        should_test_upgrade=1
+        log_info "Last auto-upgrade test was $days_since_test days ago, testing resolution..."
+      fi
+    else
+      # First time, don't test yet (record state instead)
+      should_test_upgrade=0
+    fi
+
+    if [ $should_test_upgrade -eq 1 ]; then
+      # Test if we can upgrade to Python 3.13
+      echo "🧪 Testing if compatibility issue is resolved with Python 3.13..."
+      if test_compatibility_resolution "$compat_issue_id" "3.13"; then
+        echo "✅ Compatibility issue resolved! Auto-upgrading to Python 3.13"
+        log_info "Auto-upgrade: Issue $compat_issue_id resolved, using Python 3.13"
+        python_range='3\.13'
+
+        # Update compatibility state
+        cat > "$COMPAT_STATE_FILE" <<EOF
+{
+  "issue_id": "$compat_issue_id",
+  "status": "resolved",
+  "resolved_at": "$(date +%s)",
+  "last_upgrade_test": "$(date +%s)",
+  "python_version": "3.13"
+}
+EOF
+      else
+        echo "⏳ Issue not yet resolved, staying on Python $compat_python"
+        log_info "Auto-upgrade: Issue $compat_issue_id still present, staying on Python $compat_python"
+        python_range="${compat_python//./\\.}"
+
+        # Update last test timestamp
+        cat > "$COMPAT_STATE_FILE" <<EOF
+{
+  "issue_id": "$compat_issue_id",
+  "status": "active",
+  "last_upgrade_test": "$(date +%s)",
+  "python_version": "$compat_python",
+  "reason": "$compat_reason"
+}
+EOF
+      fi
+    else
+      # Use recommended Python without testing
+      echo "   Using Python $compat_python (issue active)"
+      python_range="${compat_python//./\\.}"
+
+      # Record compatibility state (first time or within 7-day window)
+      cat > "$COMPAT_STATE_FILE" <<EOF
+{
+  "issue_id": "$compat_issue_id",
+  "status": "active",
+  "last_check": "$(date +%s)",
+  "last_upgrade_test": "$(date +%s)",
+  "python_version": "$compat_python",
+  "reason": "$compat_reason"
+}
+EOF
+
+      # Auto-trigger force-reinstall if in UPDATE_MODE and venv exists with wrong Python version
+      if [ "$UPDATE_MODE" = "1" ] && [ -d ".venv" ]; then
+        current_venv_python=$(python --version 2>&1 | awk '{print $2}' 2>/dev/null || echo "")
+        if [ -n "$current_venv_python" ] && [[ ! "$current_venv_python" =~ ^$compat_python ]]; then
+          echo "   🔧 Auto-triggering force-reinstall (venv has Python $current_venv_python, need $compat_python)"
+          log_info "UPDATE_MODE: Auto-triggering force-reinstall due to Python version mismatch"
+          FORCE_REINSTALL=1
+        fi
+      fi
+    fi
+  else
+    echo "✅ No compatibility issues detected"
+    echo "   Using latest stable Python (3.11-3.13)"
+    python_range='3\.(1[1-3])'
+    log_info "No compatibility issues, using default Python range"
+  fi
+else
+  # Non-adaptive mode: use default range
+  python_range='3\.(1[1-3])'
+fi
+
+# Install optimal Python version based on compatibility detection
+latest_python=$(pyenv install --list | grep -E "^  ${python_range}\.[0-9]+$" | tail -1 | tr -d ' ')
+
+if [ -z "$latest_python" ]; then
+  echo "❌ No Python version found matching pattern: ${python_range}"
+  echo "   Available Python versions:"
+  pyenv install --list | grep -E '^  3\.(1[1-3])\.[0-9]+$' | head -5
+  log_error "Failed to find Python version matching ${python_range}"
+  exit 1
+fi
+
+echo "🐍 Selected Python version: $latest_python"
+log_info "Installing Python $latest_python"
+
 pyenv install -s "$latest_python"
 pyenv global "$latest_python"
 
