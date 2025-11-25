@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.10 (November 2025)
+# Version: 3.10.1 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -10,6 +10,10 @@
 #           detection with automatic resolution and auto-upgrade capabilities, smart Rust
 #           detection and installation, PyTorch safety checks.
 #
+# v3.10.1 Bugfixes: Critical fixes for v3.10
+#   - Fixed directory handling in UPDATE MODE constraint testing loop
+#   - Fixed undefined $ARCH variable (should be $OS_ARCH) in PyTorch safety check
+#   - Added absolute paths and directory preservation to prevent working directory issues
 # v3.10 Changes: Smart Rust Detection & PyTorch Safety Net (DEFENSIVE)
 #   - Automatic Rust toolchain installation when Rust-based packages detected
 #   - Smart detection checks for: polars, ruff, cryptography, tokenizers, orjson, tiktoken, etc.
@@ -1770,7 +1774,7 @@ fi
 # CRITICAL: Check for PyTorch + Python 3.13 + macOS 15.1+ + Apple Silicon incompatibility
 # This is a safety net in case adaptive detection was disabled (--no-adaptive)
 if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -eq 13 ]; then
-  if [ "$OS_PLATFORM" = "macos" ] && [ "$ARCH" = "arm64" ]; then
+  if [ "$OS_PLATFORM" = "macos" ] && [ "$OS_ARCH" = "arm64" ]; then
     darwin_version=$(get_os_version)
     if [ "$darwin_version" -ge 25 ]; then
       # Check if PyTorch is in requirements
@@ -3358,10 +3362,16 @@ if [ "$UPDATE_MODE" = "1" ]; then
   RELAXABLE_CONSTRAINTS=()
   NECESSARY_CONSTRAINTS=()
 
+  # Save current directory to ensure we stay in the right place
+  SAVED_DIR=$(pwd)
+
   for constraint in "${SMART_CONSTRAINTS[@]}"; do
     pkg=$(echo "$constraint" | sed -E 's/[=><!]=.*//')
 
     echo "🧪 Testing $pkg without version constraint..."
+
+    # Ensure we're in the correct directory
+    cd "$SAVED_DIR"
 
     # Create test requirements with only this constraint relaxed
     cat requirements.in.backup | sed -E "s/${pkg}[=><!]+[0-9.]+/${pkg}/" > requirements.in.test_single
@@ -3373,8 +3383,8 @@ if [ "$UPDATE_MODE" = "1" ]; then
       "$PYENV_ROOT/versions/$latest_python/bin/python" -m venv "$TEMP_SINGLE_VENV" 2>/dev/null
       source "$TEMP_SINGLE_VENV/bin/activate"
 
-      # Install and check for conflicts
-      if pip install -q -r requirements.txt.test_single 2>/dev/null && pip check >/dev/null 2>&1; then
+      # Install and check for conflicts (use absolute path for requirements)
+      if pip install -q -r "$SAVED_DIR/requirements.txt.test_single" 2>/dev/null && pip check >/dev/null 2>&1; then
         echo "  ✅ $pkg: Constraint can potentially be RELAXED (no conflicts detected)"
         RELAXABLE_CONSTRAINTS+=("$pkg")
       else
@@ -3383,7 +3393,8 @@ if [ "$UPDATE_MODE" = "1" ]; then
       fi
 
       deactivate
-      source .venv/bin/activate
+      # Use absolute path for main venv activation
+      source "$SAVED_DIR/.venv/bin/activate"
       rm -rf "$(dirname "$TEMP_SINGLE_VENV")"
     else
       echo "  ⚠️  $pkg: Constraint still NECESSARY (compilation failed)"
@@ -3392,6 +3403,9 @@ if [ "$UPDATE_MODE" = "1" ]; then
 
     rm -f requirements.in.test_single requirements.txt.test_single
   done
+
+  # Ensure we're back in the correct directory after loop
+  cd "$SAVED_DIR"
 
   echo ""
   echo "📊 SMART CONSTRAINT ANALYSIS RESULTS:"

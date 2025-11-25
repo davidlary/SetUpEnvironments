@@ -1,11 +1,17 @@
 # How to Update and Maintain the Base Environment
 
-**Version:** 1.2 (November 2025) - Updated for setup_base_env.sh v3.8
+**Version:** 1.3 (November 2025) - Updated for setup_base_env.sh v3.10.1
 **Related Files:** `setup_base_env.sh`, `README_setup_base_env.md`
 
 ## Overview
 
 This guide provides a comprehensive, reusable prompt for adding packages and maintaining the sophisticated data science environment. Use this every time you need to update the environment to ensure consistency with the smart constraints and conflict resolution system.
+
+**v3.10.1 Update:** Critical bugfixes. Fixed directory handling in UPDATE MODE constraint testing loop (prevented working directory issues). Fixed undefined $ARCH variable in PyTorch safety check (should be $OS_ARCH). Added absolute paths and directory preservation throughout.
+
+**v3.10 Update:** Smart Rust Detection & PyTorch Safety Net. Automatic Rust toolchain installation when Rust-based packages detected (polars, ruff, pydantic-core, etc.). PyTorch safety check blocks Python 3.13 + PyTorch + macOS 15.1+ + Apple Silicon incompatibility even if --no-adaptive used. Defense-in-depth protection.
+
+**v3.9 Update:** Adaptive Python version selection. Automatic detection of Python 3.13 + PyTorch + macOS 15.1+ + Apple Silicon incompatibility. Falls back to Python 3.12 (latest stable) with clear explanation. Added compatibility matrix tracking in .compatibility_state.json. --no-adaptive flag allows override for advanced users.
 
 **v3.8 Update:** Hybrid snapshot strategy implemented. Small venvs (<500MB) use full compressed snapshots with pigz. Large venvs (≥500MB) use fast metadata-only snapshots (~100KB, ~1 second). Intelligent rollback handles both types seamlessly.
 
@@ -785,7 +791,7 @@ Just like gremlinpython had a false conflict, smart constraints may become unnec
 
 ---
 
-**Last Updated:** November 14, 2025
-**Version:** 3.8 - Hybrid Snapshot Strategy
+**Last Updated:** November 25, 2025
+**Version:** 3.10.1 - Bugfix Release
 **Maintained by:** David Lary
-**Environment Version:** 3.8 with hybrid snapshots, verbose logging, and 150 direct Python packages
+**Environment Version:** 3.10.1 with smart Rust detection, PyTorch safety net, adaptive Python selection, hybrid snapshots, verbose logging, and 146+ direct Python packages

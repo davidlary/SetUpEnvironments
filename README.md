@@ -1,14 +1,14 @@
 # Base Environment Setup Script
 
-**Version:** 3.3 (November 2025) - **Enhanced Production-Grade Edition**
+**Version:** 3.10.0 (November 2025) - **Production-Grade with Smart Rust Detection & PyTorch Safety Net**
 **Script:** `setup_base_env.sh`
-**Python Version:** 3.12 (managed via pyenv)
+**Python Version:** 3.11-3.13 (adaptive selection based on compatibility matrix)
 
 ## Overview
 
-This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, and performance optimizations.
+This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection, smart Rust toolchain installation, and PyTorch safety checks.
 
-**✨ NEW in v3.3:** 5 additional enhancements (21 total) bringing security auditing with pip-audit CVE scanning, extended error context with line numbers and log history, graceful degradation for R/Julia (non-blocking failures), undefined variable detection (set -u), and **23 essential packages now included** (fixing README/code inconsistency): Deep Learning (torch, tensorflow, keras), Modern Data (polars, statsmodels, joblib), Scientific Formats (xarray, zarr, h5py), Infrastructure (pint, rpy2, sqlalchemy, psycopg2-binary, boto3), Utilities (tqdm, click, python-dateutil, feedparser, openpyxl), AI/NLP (spacy, langchain, jupyterlab, papermill).
+**✨ NEW in v3.10:** Smart Rust Detection & PyTorch Safety Net. Automatic Rust toolchain installation when Rust-based packages detected (polars, ruff, pydantic-core, etc.). PyTorch safety check blocks Python 3.13 + PyTorch + macOS 15.1+ + Apple Silicon incompatibility even if --no-adaptive used. Defense-in-depth protection.
 
 **v3.2 refinements (6):** Stale lock detection, stage logging in lock file, smart constraints (8 packages), adaptive conflict resolution (2-tier), early exit optimization.
 
