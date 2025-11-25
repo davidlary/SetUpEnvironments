@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.11.4 (November 2025)
+# Version: 3.11.5 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -11,6 +11,12 @@
 #           detection and installation, PyTorch safety checks, self-supervision framework,
 #           automatic bash upgrade to 4.0+ for modern features.
 #
+# v3.11.5 Bugfix: Fix pip-tools import name (November 25, 2025)
+#   - CRITICAL FIX: Corrected pip-tools import name from pip_tools to piptools
+#   - Bug: Package verification used wrong import name (pip_tools instead of piptools)
+#   - Impact: pip-tools installation always failed verification, causing script exit
+#   - Locations fixed: Line 814 (CRITICAL_PACKAGES), line 845 (validation), line 2657 (operation)
+#   - pip-tools package imports as 'piptools' (no underscore)
 # v3.11.4 Bugfix: Make git config non-fatal (November 25, 2025)
 #   - CRITICAL FIX: Wrapped git config operation to make failures non-fatal
 #   - Bug: Git config failure (due to YAML parsing bug) caused script exit
@@ -811,7 +817,7 @@ EXPECTED_STATE[git_configured]="false"  # Will be set if git configured
 
 # Define critical packages that must be importable (subset for Phase 1)
 CRITICAL_PACKAGES=(
-  "pip_tools:pip_tools"
+  "pip_tools:piptools"
 )
 
 # ============================================================================
@@ -842,7 +848,7 @@ validate_final_state() {
   # 2. Pip-tools
   echo ""
   echo "📌 Validating pip toolchain..."
-  if result=$(verify_package_installed "pip-tools" "pip_tools" 2>&1); then
+  if result=$(verify_package_installed "pip-tools" "piptools" 2>&1); then
     echo "  ✅ $result"
   else
     echo "  ❌ pip-tools validation failed: $result"
@@ -952,7 +958,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.11.4 - Self-Supervision Framework (Fully Functional)"
+log_info "Base Environment Setup Script v3.11.5 - Self-Supervision Framework (Fully Functional)"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -2654,7 +2660,7 @@ echo "📦 Installing pip-tools..."
 perform_verified_operation \
   "Install pip-tools" \
   "pip install --disable-pip-version-check pip-tools 2>&1 | grep -v '^\[notice\]' || true" \
-  "verify_package_installed pip-tools pip_tools" \
+  "verify_package_installed pip-tools piptools" \
   "pip-tools=installed:importable=true" \
   "pip uninstall -y pip-tools && pip cache purge" \
   3
