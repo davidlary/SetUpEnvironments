@@ -23,6 +23,92 @@ This guide provides a comprehensive, reusable prompt for adding packages and mai
 
 ---
 
+## 🚀 Quick Reference: Recommended Update Strategies
+
+Before diving into the detailed prompts below, here are the recommended commands for common update scenarios:
+
+### Standard Routine Maintenance (Recommended)
+
+```bash
+./setup_base_env.sh --update --verbose
+```
+
+**When to use:** Monthly or quarterly maintenance, before starting new projects, after hearing about security patches
+
+**What it does:**
+- Checks all components: toolchain (pyenv, Python, pip, pip-tools), languages (R, Julia), system dependencies, and all 146+ Python packages
+- Always applies safe toolchain updates immediately
+- Tests package updates in temporary environments before applying
+- Only applies package updates if ALL tests pass (maximum safety)
+- Provides detailed execution logs for full transparency
+- Identifies which smart constraints can be relaxed
+
+**Time:** 10-30 minutes depending on what needs updating
+
+### Quick Standard Update (Faster, Less Verbose)
+
+```bash
+./setup_base_env.sh --update
+```
+
+**When to use:** When you want the same comprehensive checks but less detailed output
+
+**What it does:** Same as above but without verbose logging - still shows all important status and decisions
+
+**Time:** 10-30 minutes
+
+### After Major System Changes (Most Thorough)
+
+```bash
+./setup_base_env.sh --update --force-reinstall
+```
+
+**When to use:**
+- After macOS updates (e.g., 15.0 → 15.1)
+- After major Homebrew upgrades
+- When system libraries have changed
+- When you want a completely fresh rebuild with latest versions
+
+**What it does:** Checks for updates + forces complete recreation of environment from scratch
+
+**Time:** 30-60 minutes (full rebuild)
+
+### Understanding What Gets Updated
+
+**Always Applied (Safe, Independent):**
+- ✅ pyenv, Python, pip, pip-tools
+- ✅ R and Julia via Homebrew
+- ✅ System dependencies (libgit2, libpq, openssl@3)
+
+**Applied Only If ALL Tests Pass (Safety-First):**
+- 🧪 Python package updates
+- 🧪 Smart constraint relaxations
+
+**Never Overridden (Safety Checks):**
+- 🛡️ PyTorch + Python 3.13 + macOS 15.1 + Apple Silicon compatibility
+- 🛡️ Adaptive compatibility matrix checks
+- 🛡️ Rust toolchain requirements
+
+### Expected Outcomes
+
+**If tests pass:**
+```
+✅ ALL TESTS PASSED - Safe to apply updates!
+📝 APPLYING ALL AUTOMATIC UPDATES...
+[Updates are applied automatically]
+```
+
+**If tests fail:**
+```
+❌ TESTS FAILED - Cannot apply updates safely
+🛡️  Keeping current versions to maintain stability
+[Toolchain still updated, but packages kept at current versions]
+```
+
+This ensures your environment never breaks from automatic updates.
+
+---
+
 ## 🔄 Environment Update & Package Management Prompt
 
 **Copy and use this prompt with Claude Code when updating the environment:**

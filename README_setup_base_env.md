@@ -184,6 +184,118 @@ source ~/Dropbox/Environments/activate_base_env.sh
 ./setup_base_env.sh --help
 ```
 
+## Routine Maintenance & Update Strategies
+
+Keeping your environment up to date is critical for security, compatibility, and accessing new features. The `--update` mode provides comprehensive checking and updating of all components.
+
+### What `--update` Mode Does
+
+The `--update` mode is **comprehensive** and checks/updates:
+
+1. **Homebrew** package database
+2. **Toolchain**: pyenv, Python, pip, pip-tools (always applied - safe)
+3. **Languages**: R and Julia via Homebrew (always applied - safe)
+4. **System dependencies**: libgit2, libpq, openssl@3 (always applied - safe)
+5. **Python packages**: All 146+ packages in requirements.in (only applied if tests pass)
+6. **Smart constraints**: Tests each individually to identify which can be relaxed
+
+**Safety Features:**
+- Toolchain updates are **always applied** (pyenv, Python, pip, pip-tools, R, Julia, system deps) - these are safe and independent
+- Package updates are **only applied if ALL tests pass** - ensures maximum stability
+- Automatically enables adaptive mode for intelligent conflict resolution
+- Creates snapshots before making changes for easy rollback
+
+### Recommended Update Commands
+
+#### For Routine Maintenance (Monthly/Quarterly)
+```bash
+./setup_base_env.sh --update --verbose
+```
+
+**Recommended approach** - provides comprehensive updates with full visibility:
+- Checks and updates all components (toolchain, languages, system deps, packages)
+- Tests package updates before applying them
+- Shows detailed execution logs for transparency
+- Identifies which smart constraints can be relaxed
+- Safe, comprehensive, and informative
+
+#### For Quick Standard Updates
+```bash
+./setup_base_env.sh --update
+```
+
+Same comprehensive checks as above but without detailed logging. Still shows all important information about available updates and what's being applied.
+
+#### After Major System Changes
+```bash
+./setup_base_env.sh --update --force-reinstall
+```
+
+Use after major OS updates (e.g., macOS 15.0 → 15.1) or when you want a completely fresh rebuild:
+- Checks for latest versions of everything
+- Forces complete recreation of environment from scratch
+- Ensures clean state after significant system changes
+- Takes longer but most thorough
+
+### What Gets Updated Automatically
+
+**Always Applied (Safe):**
+- ✅ pyenv version updates
+- ✅ Python version updates (respecting compatibility matrix)
+- ✅ pip and pip-tools updates (within compatibility constraints)
+- ✅ R version updates via Homebrew
+- ✅ Julia version updates via Homebrew
+- ✅ System dependencies (libgit2, libpq, openssl@3)
+
+**Applied Only If Tests Pass (Safety-First):**
+- 🧪 Python package updates (all 146+ packages)
+- 🧪 Smart constraint relaxations (when conflicts resolved)
+
+**Never Overridden (Safety Checks):**
+- 🛡️ PyTorch + Python 3.13 + macOS 15.1 + Apple Silicon (blocks if detected)
+- 🛡️ Adaptive compatibility matrix checks
+- 🛡️ Rust toolchain requirements
+
+### Update Frequency Recommendations
+
+| Scenario | Recommended Frequency | Command |
+|----------|----------------------|---------|
+| **Routine maintenance** | Monthly or quarterly | `./setup_base_env.sh --update --verbose` |
+| **Before new projects** | Each time | `./setup_base_env.sh --update` |
+| **After OS updates** | Immediately | `./setup_base_env.sh --update --force-reinstall` |
+| **After package conflicts** | As needed | `./setup_base_env.sh --adaptive --force-reinstall` |
+| **Security patches** | When notified | `./setup_base_env.sh --update` |
+
+### Understanding Update Output
+
+When you run `--update`, you'll see clear status for each component:
+
+```bash
+✅ Component is up to date (no action needed)
+📦 Update available: version X → version Y (will be applied)
+⚠️  Tests failed (keeping current version for stability)
+```
+
+**If all tests pass**, you'll see:
+```
+✅ ALL TESTS PASSED - Safe to apply updates!
+📝 APPLYING ALL AUTOMATIC UPDATES...
+```
+
+**If tests fail**, you'll see:
+```
+❌ TESTS FAILED - Cannot apply updates safely
+🛡️  Keeping current versions to maintain stability
+```
+
+This ensures your environment never breaks from automatic updates.
+
+### Additional Resources
+
+For detailed information about update mode behavior, test output examples, and troubleshooting:
+- See **README_how_to_update_setup_base_env.md** - Comprehensive update guide
+- See **Scenario 4** in that file for detailed update mode workflow and example output
+
 ## Key Features
 
 ### 🎯 Smart Package Management
