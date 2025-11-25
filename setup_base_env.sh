@@ -1,15 +1,22 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.11.1 (November 2025)
+# Version: 3.11.2 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
 #           concurrent safety, memory monitoring, integrity verification, security audits,
 #           comprehensive verbose logging, hybrid snapshot strategy, adaptive compatibility
 #           detection with automatic resolution and auto-upgrade capabilities, smart Rust
-#           detection and installation, PyTorch safety checks, self-supervision framework.
+#           detection and installation, PyTorch safety checks, self-supervision framework,
+#           automatic bash upgrade to 4.0+ for modern features.
 #
+# v3.11.2 Bugfix: Add bash auto-upgrade + snapshot fix (November 25, 2025)
+#   - CRITICAL FIX: Added automatic bash upgrade from 3.2 to 5.x (macOS default → modern)
+#   - Auto-detects bash version, installs bash 5.x via Homebrew if needed
+#   - Re-executes script with modern bash to support associative arrays
+#   - System bash remains unchanged - only this script uses modern bash
+#   - Also includes: Snapshot failure now properly non-fatal
 # v3.11.1 Bugfix: Fix silent exit on snapshot failure (November 25, 2025)
 #   - CRITICAL FIX: Wrapped create_environment_snapshot with failure handler
 #   - Bug: Snapshot creation failed + set -e caused silent script exit
@@ -106,6 +113,50 @@
 #   ENABLE_ADAPTIVE=1 ./setup_base_env.sh  # Enable via environment variable
 #
 # Documentation: See README_setup_base_env.md for full documentation
+
+# ============================================================================
+# BASH VERSION CHECK AND AUTO-UPGRADE (macOS ships with bash 3.2)
+# ============================================================================
+
+# Check if we're already in an upgraded bash session (prevent infinite loops)
+if [ -z "${BASH_UPGRADED:-}" ]; then
+  # Get bash version
+  BASH_MAJOR_VERSION=${BASH_VERSINFO[0]:-0}
+
+  if [ "$BASH_MAJOR_VERSION" -lt 4 ]; then
+    echo "⚠️  Bash $BASH_VERSION detected (Bash 4.0+ required)"
+    echo "📦 Auto-upgrading to modern bash via Homebrew..."
+
+    # Check if modern bash is already installed
+    MODERN_BASH="/opt/homebrew/bin/bash"
+    if [ ! -f "$MODERN_BASH" ]; then
+      MODERN_BASH="/usr/local/bin/bash"
+    fi
+
+    if [ ! -f "$MODERN_BASH" ]; then
+      echo "   Installing bash via Homebrew..."
+      brew install bash >/dev/null 2>&1
+      # Re-detect location after install
+      if [ -f "/opt/homebrew/bin/bash" ]; then
+        MODERN_BASH="/opt/homebrew/bin/bash"
+      elif [ -f "/usr/local/bin/bash" ]; then
+        MODERN_BASH="/usr/local/bin/bash"
+      fi
+      echo "   ✅ Bash 5.x installed: $MODERN_BASH"
+    else
+      echo "   ✅ Modern bash found: $MODERN_BASH"
+    fi
+
+    # Get modern bash version
+    MODERN_VERSION=$("$MODERN_BASH" --version | head -1 | awk '{print $4}')
+    echo "   🔄 Re-executing script with GNU bash, version $MODERN_VERSION"
+    echo ""
+
+    # Re-execute this script with modern bash
+    export BASH_UPGRADED=1
+    exec "$MODERN_BASH" "$0" "$@"
+  fi
+fi
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -888,7 +939,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.11.1 - Self-Supervision + Non-Fatal Snapshot"
+log_info "Base Environment Setup Script v3.11.2 - Self-Supervision + Bash Upgrade + Non-Fatal Snapshot"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
