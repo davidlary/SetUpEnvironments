@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.11.0 (November 2025)
+# Version: 3.11.1 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -10,6 +10,12 @@
 #           detection with automatic resolution and auto-upgrade capabilities, smart Rust
 #           detection and installation, PyTorch safety checks, self-supervision framework.
 #
+# v3.11.1 Bugfix: Fix silent exit on snapshot failure (November 25, 2025)
+#   - CRITICAL FIX: Wrapped create_environment_snapshot with failure handler
+#   - Bug: Snapshot creation failed + set -e caused silent script exit
+#   - Root cause: tar command hanging/failing + set -e active → immediate exit
+#   - Fix: Added explicit failure check with log_warn, continues anyway (non-fatal)
+#   - Snapshot failure is now properly logged and doesn't stop script
 # v3.11.0 NEW: Self-Supervision Framework (Phase 1) (November 25, 2025)
 #   - FRAMEWORK: Comprehensive self-supervision framework for critical operations
 #   - Verification Functions: Check actual state, not just exit codes
@@ -882,7 +888,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.11.0 - Self-Supervision Framework"
+log_info "Base Environment Setup Script v3.11.1 - Self-Supervision + Non-Fatal Snapshot"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -4262,7 +4268,9 @@ create_needed_packages_list() {
 # ============================================================================
 
 # Create snapshot of current environment before making changes
-create_environment_snapshot
+if ! create_environment_snapshot; then
+  log_warn "Snapshot creation failed - continuing anyway (non-fatal)"
+fi
 log_stage "STAGE: Creating environment snapshot"
 
 # Enable error trapping for installation phase
