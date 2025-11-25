@@ -1,12 +1,20 @@
 # Base Environment Setup Script
 
-**Version:** 3.11.0 (November 2025) - **Production-Grade with Self-Supervision & Smart Safety Checks**
+**Version:** 3.11.8 (November 2025) - **Production-Grade with Fully Functional Self-Supervision**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.11-3.13 (adaptive selection based on compatibility matrix)
 
 ## Overview
 
-This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection, smart Rust toolchain installation, PyTorch safety checks, and **self-supervision with verification loops**.
+This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection, smart Rust toolchain installation, PyTorch safety checks, and **fully functional self-supervision with verification loops**.
+
+**✨ NEW in v3.11.5-3.11.8:** **Self-Supervision Framework Now Fully Functional** - Fixed 4 critical bugs that prevented the self-supervision framework from completing successfully:
+- **Bug #10 (v3.11.5):** Fixed pip-tools import name (pip_tools → piptools)
+- **Bug #11 (v3.11.6):** Fixed git config YAML parsing with auto-detection of corrupted environment variables
+- **Bug #12 (v3.11.7):** Fixed integrity check after pip-compile (now updates hash instead of verifying against stale hash)
+- **Bug #13 (v3.11.8):** Fixed interactive prompt in non-interactive mode (now skips prompt in --force-reinstall)
+
+✅ **Result:** Full `--force-reinstall` runs now complete successfully without spurious rollbacks. All self-supervision operations verify correctly.
 
 **✨ NEW in v3.11.0:** **Self-Supervision Framework** - Revolutionary verification system that prevents silent failures. Every critical operation verifies actual state (not just exit codes), with automatic retry and self-healing. Final validation ensures 100% correctness before declaring success. Catches bugs like missing PyTorch TARGET version check automatically. Framework overhead <1 second, but enables 10-100x speedup on re-runs by intelligently skipping completed operations.
 
