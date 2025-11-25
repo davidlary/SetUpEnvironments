@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.10.1 (November 2025)
+# Version: 3.10.3 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -10,16 +10,29 @@
 #           detection with automatic resolution and auto-upgrade capabilities, smart Rust
 #           detection and installation, PyTorch safety checks.
 #
-# v3.10.1 Bugfixes: Critical fixes for v3.10
+# v3.10.3 Bugfixes: pip version comparison fix (November 25, 2025)
+#   - CRITICAL FIX: Fixed pip version comparison integer error (line 2115-2123)
+#   - Bug: Comparing pip major version against constraint with minor version (e.g., "25.2")
+#   - Error: "[: 25.2: integer expression expected" appeared 21+ times in output
+#   - Fix: Extract only major version from constraint for integer comparison
+#   - Added validation to ensure $major is not empty before comparison
+# v3.10.2 Bugfixes: Critical PyTorch safety net completion (November 25, 2025)
+#   - CRITICAL FIX: Added missing PyTorch safety check to UPDATE MODE (line 3274)
+#   - PyTorch check was only in Python Version Compatibility section, not in UPDATE MODE
+#   - Now has defense-in-depth: checks in both normal installation AND update mode
+#   - Updated changelog to accurately reflect dual-location implementation
+# v3.10.1 Bugfixes: Directory handling and variable fixes (November 25, 2025)
 #   - Fixed directory handling in UPDATE MODE constraint testing loop
-#   - Fixed undefined $ARCH variable (should be $OS_ARCH) in PyTorch safety check
+#   - Fixed undefined $ARCH variable (should be $OS_ARCH) in PyTorch safety check (line 1777)
 #   - Added absolute paths and directory preservation to prevent working directory issues
 # v3.10 Changes: Smart Rust Detection & PyTorch Safety Net (DEFENSIVE)
 #   - Automatic Rust toolchain installation when Rust-based packages detected
 #   - Smart detection checks for: polars, ruff, cryptography, tokenizers, orjson, tiktoken, etc.
 #   - No flag needed - fully automatic based on requirements.in
 #   - Non-blocking: Falls back to pre-built wheels if Rust installation fails
-#   - PyTorch safety check in Package Version Check section
+#   - PyTorch safety checks in TWO locations for defense-in-depth:
+#     * Python Version Compatibility section (line 1774) - normal installation
+#     * Package Version Check section (line 3274) - UPDATE MODE
 #   - Blocks installation if Python 3.13 + PyTorch + macOS 15.1+ + Apple Silicon detected
 #   - Defense-in-depth: Catches incompatibility even if --no-adaptive used
 #   - Critical error with clear remediation instructions
@@ -470,7 +483,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.10 - Smart Rust & PyTorch Safety"
+log_info "Base Environment Setup Script v3.10.3 - Smart Rust & PyTorch Safety"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -2105,14 +2118,15 @@ log_info "Current pip version: $CURRENT_PIP"
 PIP_CONSTRAINT=$(get_safe_pip_constraint)
 log_info "Using dynamic pip constraint: $PIP_CONSTRAINT"
 
-# Extract max version from constraint for searching (e.g., "pip<26" -> "26")
-CONSTRAINT_MAX=$(echo "$PIP_CONSTRAINT" | sed 's/pip<//')
+# Extract max version from constraint for searching (e.g., "pip<26" -> "26", "pip<25.2" -> "25")
+CONSTRAINT_MAX_FULL=$(echo "$PIP_CONSTRAINT" | sed 's/pip<//')
+CONSTRAINT_MAX=$(echo "$CONSTRAINT_MAX_FULL" | cut -d. -f1)
 
 # Find latest pip version within our dynamic constraint
 echo "🔍 Checking for latest pip version within compatibility constraint ($PIP_CONSTRAINT)..."
 LATEST_COMPATIBLE_PIP=$(python -m pip index versions pip 2>/dev/null | grep "Available versions:" | cut -d: -f2 | tr ',' '\n' | sed 's/^ *//g' | while read version; do
   major=$(echo "$version" | cut -d. -f1)
-  if [ -n "$version" ] && [ "$major" -lt "$CONSTRAINT_MAX" ]; then
+  if [ -n "$version" ] && [ -n "$major" ] && [ "$major" -lt "$CONSTRAINT_MAX" ]; then
     echo "$version"
     break
   fi
@@ -3270,6 +3284,37 @@ if [ "$UPDATE_MODE" = "1" ]; then
   echo ""
   echo "📦 PACKAGE VERSION CHECK"
   echo "------------------------"
+
+  # CRITICAL: PyTorch compatibility safety check for UPDATE MODE
+  # Verify Python version is compatible with PyTorch before proceeding
+  if check_package_required "torch" || check_package_required "pytorch"; then
+    echo "🔍 Checking PyTorch compatibility with current Python version..."
+    PYTHON_VERSION=$(python --version 2>&1 | awk '{print $2}')
+    PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+    PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+    if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -eq 13 ]; then
+      if [ "$OS_PLATFORM" = "macos" ] && [ "$OS_ARCH" = "arm64" ]; then
+        darwin_version=$(uname -r | cut -d'.' -f1)
+        if [ "$darwin_version" -ge 25 ]; then
+          echo ""
+          echo "❌ CRITICAL PYTORCH COMPATIBILITY ISSUE"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Configuration: Python $PYTHON_VERSION + PyTorch + macOS 15.1+ + Apple Silicon"
+          echo "Known Issue:   Causes indefinite mutex lock hang"
+          echo ""
+          echo "UPDATE MODE BLOCKED: Cannot proceed with package updates"
+          echo "REQUIRED ACTION:"
+          echo "  ./setup_base_env.sh --adaptive --force-reinstall"
+          echo "  (This will use Python 3.12 automatically)"
+          echo ""
+          log_error "UPDATE MODE: PyTorch incompatibility detected, blocking package updates"
+          exit 1
+        fi
+      fi
+    fi
+    echo "✅ PyTorch compatibility verified"
+  fi
 
   # Backup current requirements
   cp requirements.in requirements.in.backup
