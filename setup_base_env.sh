@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.10.3 (November 2025)
+# Version: 3.10.4 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -10,6 +10,13 @@
 #           detection with automatic resolution and auto-upgrade capabilities, smart Rust
 #           detection and installation, PyTorch safety checks.
 #
+# v3.10.4 Bugfixes: CRITICAL PyTorch target version check (November 25, 2025)
+#   - CRITICAL FIX: PyTorch safety check now verifies TARGET Python version in UPDATE MODE
+#   - Bug: UPDATE MODE only checked CURRENT Python (3.12), not TARGET Python (3.13)
+#   - Impact: Would upgrade to Python 3.13 + PyTorch causing mutex hang on macOS 15.1+ Apple Silicon
+#   - Fix: Added check at line 3319 to verify target Python version ($LATEST_PYTHON) compatibility
+#   - Now blocks Python 3.13 upgrade if PyTorch installed on incompatible platform
+#   - This is Bug #4 in the comprehensive audit of --update mode safety checks
 # v3.10.3 Bugfixes: pip version comparison fix (November 25, 2025)
 #   - CRITICAL FIX: Fixed pip version comparison integer error (line 2115-2123)
 #   - Bug: Comparing pip major version against constraint with minor version (e.g., "25.2")
@@ -483,7 +490,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.10.3 - Smart Rust & PyTorch Safety"
+log_info "Base Environment Setup Script v3.10.4 - Smart Rust & PyTorch Safety"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -3286,13 +3293,14 @@ if [ "$UPDATE_MODE" = "1" ]; then
   echo "------------------------"
 
   # CRITICAL: PyTorch compatibility safety check for UPDATE MODE
-  # Verify Python version is compatible with PyTorch before proceeding
+  # Verify BOTH current AND target Python versions are compatible with PyTorch
   if check_package_required "torch" || check_package_required "pytorch"; then
     echo "🔍 Checking PyTorch compatibility with current Python version..."
     PYTHON_VERSION=$(python --version 2>&1 | awk '{print $2}')
     PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
     PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
 
+    # Check current Python version
     if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -eq 13 ]; then
       if [ "$OS_PLATFORM" = "macos" ] && [ "$OS_ARCH" = "arm64" ]; then
         darwin_version=$(uname -r | cut -d'.' -f1)
@@ -3308,11 +3316,41 @@ if [ "$UPDATE_MODE" = "1" ]; then
           echo "  ./setup_base_env.sh --adaptive --force-reinstall"
           echo "  (This will use Python 3.12 automatically)"
           echo ""
-          log_error "UPDATE MODE: PyTorch incompatibility detected, blocking package updates"
+          log_error "UPDATE MODE: PyTorch incompatibility detected (current Python), blocking package updates"
           exit 1
         fi
       fi
     fi
+
+    # CRITICAL: Check TARGET Python version if update is available
+    if [ "$PYTHON_UPDATE_AVAILABLE" = "1" ]; then
+      echo "🔍 Checking PyTorch compatibility with TARGET Python version ($LATEST_PYTHON)..."
+      TARGET_MAJOR=$(echo $LATEST_PYTHON | cut -d. -f1)
+      TARGET_MINOR=$(echo $LATEST_PYTHON | cut -d. -f2)
+
+      if [ "$TARGET_MAJOR" -eq 3 ] && [ "$TARGET_MINOR" -eq 13 ]; then
+        if [ "$OS_PLATFORM" = "macos" ] && [ "$OS_ARCH" = "arm64" ]; then
+          darwin_version=$(uname -r | cut -d'.' -f1)
+          if [ "$darwin_version" -ge 25 ]; then
+            echo ""
+            echo "❌ CRITICAL PYTORCH COMPATIBILITY ISSUE"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Configuration: Python $LATEST_PYTHON (TARGET) + PyTorch + macOS 15.1+ + Apple Silicon"
+            echo "Known Issue:   Causes indefinite mutex lock hang"
+            echo ""
+            echo "UPDATE MODE BLOCKED: Cannot upgrade to Python 3.13 with PyTorch installed"
+            echo "REQUIRED ACTION:"
+            echo "  ./setup_base_env.sh --adaptive --force-reinstall"
+            echo "  (This will use Python 3.12 automatically and skip incompatible 3.13)"
+            echo ""
+            log_error "UPDATE MODE: PyTorch incompatibility detected (target Python 3.13), blocking update"
+            exit 1
+          fi
+        fi
+      fi
+      echo "✅ PyTorch compatibility verified for target Python $LATEST_PYTHON"
+    fi
+
     echo "✅ PyTorch compatibility verified"
   fi
 
