@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.11.5 (November 2025)
+# Version: 3.11.6 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -11,6 +11,13 @@
 #           detection and installation, PyTorch safety checks, self-supervision framework,
 #           automatic bash upgrade to 4.0+ for modern features.
 #
+# v3.11.6 Bugfix: Fix git config YAML parsing (November 25, 2025)
+#   - CRITICAL FIX: Added sanity checks to detect malformed environment variables
+#   - Bug: GITHUB_EMAIL/GITHUB_NAME contained raw YAML lines (e.g., "  email: value")
+#   - Root cause: Corrupted environment variables from previous runs bypassed YAML parsing
+#   - Impact: Git verification always failed due to malformed expected values
+#   - Fix: Auto-detect malformed values (containing "email:" or "name:" patterns) and force re-parse
+#   - All git config bugs now resolved - verification should pass
 # v3.11.5 Bugfix: Fix pip-tools import name (November 25, 2025)
 #   - CRITICAL FIX: Corrected pip-tools import name from pip_tools to piptools
 #   - Bug: Package verification used wrong import name (pip_tools instead of piptools)
@@ -958,7 +965,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.11.5 - Self-Supervision Framework (Fully Functional)"
+log_info "Base Environment Setup Script v3.11.6 - Self-Supervision Framework (Fully Functional)"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -2439,6 +2446,17 @@ if [ -f "$API_KEYS_YAML" ]; then
   export GITHUB_USERNAME="${GITHUB_USERNAME:-$(get_nested_yaml_value "github" "username")}"
   export GITHUB_NAME="${GITHUB_NAME:-$(get_nested_yaml_value "github" "name")}"
   export CENSUS_API_KEY="${CENSUS_API_KEY:-$(get_nested_yaml_value "api_keys" "census_api_key")}"
+
+  # Sanity check: Detect malformed values from corrupted environment variables
+  # If values contain YAML syntax (leading spaces, colons, quotes), force re-parse
+  if [[ "$GITHUB_EMAIL" =~ ^[[:space:]]*email: ]] || [[ "$GITHUB_EMAIL" =~ [[:space:]]+email: ]]; then
+    log_warn "Detected malformed GITHUB_EMAIL - re-parsing from YAML"
+    export GITHUB_EMAIL="$(get_nested_yaml_value "github" "email")"
+  fi
+  if [[ "$GITHUB_NAME" =~ ^[[:space:]]*name: ]] || [[ "$GITHUB_NAME" =~ [[:space:]]+name: ]]; then
+    log_warn "Detected malformed GITHUB_NAME - re-parsing from YAML"
+    export GITHUB_NAME="$(get_nested_yaml_value "github" "name")"
+  fi
 
   echo "✅ API keys loaded from YAML file (ANTHROPIC_API_KEY excluded for Claude Code compatibility)"
 
