@@ -1,14 +1,24 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.9 (November 2025)
+# Version: 3.10 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
 #           concurrent safety, memory monitoring, integrity verification, security audits,
 #           comprehensive verbose logging, hybrid snapshot strategy, adaptive compatibility
-#           detection with automatic resolution and auto-upgrade capabilities.
+#           detection with automatic resolution and auto-upgrade capabilities, smart Rust
+#           detection and installation, PyTorch safety checks.
 #
+# v3.10 Changes: Smart Rust Detection & PyTorch Safety Net (DEFENSIVE)
+#   - Automatic Rust toolchain installation when Rust-based packages detected
+#   - Smart detection checks for: polars, ruff, cryptography, tokenizers, orjson, tiktoken, etc.
+#   - No flag needed - fully automatic based on requirements.in
+#   - Non-blocking: Falls back to pre-built wheels if Rust installation fails
+#   - PyTorch safety check in Package Version Check section
+#   - Blocks installation if Python 3.13 + PyTorch + macOS 15.1+ + Apple Silicon detected
+#   - Defense-in-depth: Catches incompatibility even if --no-adaptive used
+#   - Critical error with clear remediation instructions
 # v3.9 Changes: Adaptive Compatibility Detection System (CRITICAL)
 #   - Automatic detection of known Python + package + OS + architecture incompatibilities
 #   - Intelligent Python version selection based on compatibility matrix
@@ -456,7 +466,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.9 - Adaptive Compatibility Detection"
+log_info "Base Environment Setup Script v3.10 - Smart Rust & PyTorch Safety"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -1420,6 +1430,32 @@ check_package_required() {
   return 1
 }
 
+# Function: Check if Rust toolchain is needed based on packages
+check_rust_needed() {
+  # Check for packages that use Rust internally or require Rust for compilation
+  # Major Rust-heavy Python packages:
+  local rust_packages=(
+    "polars"              # High-performance DataFrame library (100% Rust)
+    "ruff"                # Fast Python linter (100% Rust)
+    "pydantic-core"       # Core validation for Pydantic v2 (Rust)
+    "cryptography"        # When building from source, uses Rust
+    "tokenizers"          # Hugging Face tokenizers (Rust backend)
+    "orjson"              # Fast JSON library (Rust)
+    "tiktoken"            # OpenAI tokenizer (Rust)
+    "safetensors"         # Safe tensor serialization (Rust)
+    "maturin"             # Build tool for Rust-Python packages
+    "py-spy"              # Python profiler (Rust)
+  )
+
+  for pkg in "${rust_packages[@]}"; do
+    if check_package_required "$pkg"; then
+      return 0  # Rust needed
+    fi
+  done
+
+  return 1  # Rust not needed
+}
+
 # Function: Get OS version for compatibility matrix
 get_os_version() {
   if [ "$OS_PLATFORM" = "macos" ]; then
@@ -1731,6 +1767,31 @@ else
   log_info "Python version check: compatible"
 fi
 
+# CRITICAL: Check for PyTorch + Python 3.13 + macOS 15.1+ + Apple Silicon incompatibility
+# This is a safety net in case adaptive detection was disabled (--no-adaptive)
+if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -eq 13 ]; then
+  if [ "$OS_PLATFORM" = "macos" ] && [ "$ARCH" = "arm64" ]; then
+    darwin_version=$(get_os_version)
+    if [ "$darwin_version" -ge 25 ]; then
+      # Check if PyTorch is in requirements
+      if check_package_required "torch" || check_package_required "pytorch"; then
+        echo ""
+        echo "❌ CRITICAL COMPATIBILITY ISSUE DETECTED"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "Configuration: Python $PYTHON_VERSION + PyTorch + macOS 15.1+ + Apple Silicon"
+        echo "Known Issue:   Causes indefinite mutex lock hang during import"
+        echo ""
+        echo "REQUIRED ACTION:"
+        echo "  Run with adaptive detection: ./setup_base_env.sh --adaptive --force-reinstall"
+        echo "  This will automatically use Python 3.12 (known working configuration)"
+        echo ""
+        log_error "PyTorch incompatibility detected: Python 3.13 + macOS 15.1+ + Apple Silicon"
+        exit 1
+      fi
+    fi
+  fi
+fi
+
 # Check if python version matches venv
 if [ -f ".venv/pyvenv.cfg" ]; then
   VENV_PYTHON=$(grep "^version " .venv/pyvenv.cfg | awk '{print $3}' | head -1)
@@ -1982,6 +2043,51 @@ for key in OPENAI_API_KEY XAI_API_KEY GOOGLE_API_KEY GITHUB_TOKEN GITHUB_EMAIL G
     echo "export $key='${!key}'" >> .venv/bin/activate
   fi
 done
+
+# ============================================================================
+# SMART RUST DETECTION AND INSTALLATION
+# Automatically installs Rust toolchain if Rust-based Python packages detected
+# ============================================================================
+
+echo "🦀 Checking if Rust toolchain is needed..."
+if check_rust_needed; then
+  echo "   📦 Rust-based packages detected in requirements.in"
+
+  # Check if rustc is already available
+  if command -v rustc >/dev/null 2>&1; then
+    RUST_VERSION=$(rustc --version 2>/dev/null | awk '{print $2}')
+    echo "   ✅ Rust already installed: $RUST_VERSION"
+    log_info "Rust toolchain: $RUST_VERSION (already installed)"
+  else
+    echo "   🔧 Installing Rust toolchain (required for package compilation)..."
+    log_info "Installing Rust toolchain via rustup"
+
+    # Install rustup (Rust toolchain installer)
+    if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal >/dev/null 2>&1; then
+      # Source cargo env to make rust available in current session
+      if [ -f "$HOME/.cargo/env" ]; then
+        source "$HOME/.cargo/env"
+      fi
+
+      RUST_VERSION=$(rustc --version 2>/dev/null | awk '{print $2}')
+      echo "   ✅ Rust installed successfully: $RUST_VERSION"
+      log_info "Rust toolchain installed: $RUST_VERSION"
+
+      # Add to activation script so it's available in future sessions
+      if [ -f ".venv/bin/activate" ]; then
+        echo '# Rust toolchain environment' >> .venv/bin/activate
+        echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> .venv/bin/activate
+      fi
+    else
+      echo "   ⚠️  Rust installation failed (non-blocking)"
+      echo "   💡 Some packages may fall back to pre-built wheels"
+      log_warn "Rust installation failed - packages will use pre-built wheels if available"
+    fi
+  fi
+else
+  echo "   ✅ No Rust-based packages detected - skipping Rust installation"
+  log_info "Rust not needed for current package set"
+fi
 
 # Install pip-tools and ensure version locking is supported (with graceful error handling)
 # Use dynamic pip constraint based on pip-tools version

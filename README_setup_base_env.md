@@ -1,12 +1,46 @@
 # Base Environment Setup Script
 
-**Version:** 3.9.2 (November 2025) - **Production-Grade with Dynamic Pip Constraints & Security Auditing**
+**Version:** 3.10.0 (November 2025) - **Production-Grade with Smart Rust Detection & PyTorch Safety Net**
 **Script:** `setup_base_env.sh`
-**Python Version:** 3.13 (managed via pyenv)
+**Python Version:** 3.11-3.13 (adaptive selection based on compatibility matrix)
 
 ## Overview
 
-This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, and automatic security vulnerability scanning.
+This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection, smart Rust toolchain installation, and PyTorch safety checks.
+
+**✨ NEW in v3.10.0:**
+
+### Smart Rust Detection & Installation (AUTOMATIC)
+- **Zero-configuration Rust support:** Automatically detects when Rust-based Python packages are in requirements.in
+- **Smart package detection:** Checks for Rust-heavy packages including:
+  - `polars` (high-performance DataFrame library, 100% Rust)
+  - `ruff` (fast Python linter, 100% Rust)
+  - `pydantic-core` (Pydantic v2 validation engine, Rust-powered)
+  - `cryptography`, `tokenizers`, `orjson`, `tiktoken`, `safetensors`, etc.
+- **Automatic installation:** Installs rustup + cargo via official installer when Rust packages detected
+- **Non-blocking:** Gracefully falls back to pre-built wheels if Rust installation fails
+- **No flag needed:** Fully automatic - no `--with-rust` flag required
+- **Session persistence:** Adds Rust to .venv/bin/activate for future sessions
+
+### PyTorch Safety Net (DEFENSE-IN-DEPTH)
+- **Critical compatibility check:** Blocks installation if Python 3.13 + PyTorch + macOS 15.1+ + Apple Silicon detected
+- **Package version check integration:** Added to PACKAGE VERSION CHECK section (runs after Python installation)
+- **Defense-in-depth:** Catches incompatibility even if adaptive detection disabled (--no-adaptive)
+- **Clear error messaging:** Displays critical error with exact configuration and required remediation steps
+- **Prevents mutex hang:** Stops installation before PyTorch import causes indefinite hang
+- **Complements adaptive detection:** Works alongside v3.9's adaptive compatibility system
+
+**Usage:**
+```bash
+# Rust is installed automatically when needed - no flag required
+./setup_base_env.sh --adaptive                    # Standard usage
+./setup_base_env.sh --update                      # Update mode (auto-enables adaptive)
+
+# PyTorch safety check activates automatically
+# If you try to install on incompatible config, you'll see:
+# ❌ CRITICAL COMPATIBILITY ISSUE DETECTED
+# Required action: ./setup_base_env.sh --adaptive --force-reinstall
+```
 
 **✨ NEW in v3.9.3:**
 
