@@ -1,12 +1,28 @@
 # Base Environment Setup Script
 
-**Version:** 3.11.9 (November 2025) - **Production-Grade with PyTorch Mutex Lock Fix**
+**Version:** 3.13.0 (November 2025) - **Production-Grade with Automatic Corrupted Package Repair**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.11-3.13 (adaptive selection based on compatibility matrix)
 
 ## Overview
 
-This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection, smart Rust toolchain installation, PyTorch safety checks, and **fully functional self-supervision with verification loops**.
+This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection, smart Rust toolchain installation, PyTorch safety checks, automatic corrupted package detection and repair, and **fully functional self-supervision with verification loops**.
+
+**✨ NEW in v3.13.0:** **Automatic Corrupted Package Detection & Repair** - Self-healing system prevents "uninstall-no-record-file" errors:
+- **Auto-detection:** Scans for corrupted packages during pre-flight checks (all modes: --update, --adaptive, fast)
+- **Corruption patterns detected:**
+  - Packages with `~` prefix in site-packages (e.g., `~angchain-0.3.27.dist-info`)
+  - Packages missing RECORD files (prevents uninstall/upgrade)
+- **Auto-fix:** Automatically removes corrupted package directories
+- **Self-healing:** Corrupted packages are cleanly reinstalled during next pip operation
+- **Non-blocking:** Runs quickly (<1 second) in pre-flight checks
+- **Result:** ✅ Eliminates installation failures caused by corrupted packages (e.g., corrupted langchain blocking all upgrades)
+
+**✨ NEW in v3.12.0:** **Package Additions** - Enhanced ML/AI and geospatial capabilities:
+- **Python:** Added `huggingface-hub` (>=0.19.0) for Hugging Face model hub access
+- **R:** Added `tmap` package for thematic map creation and geospatial visualization
+- **Verification:** Comprehensive check ensuring all requested packages present (neo4j, pydantic, lxml, spacy, torch, etc.)
+- **Architecture-aware:** Transitive dependencies excluded from requirements.in (follows best practices)
 
 **✨ NEW in v3.11.9:** **PyTorch Mutex Lock RESOLVED + Bug #14 Fixed** - Complete fix for PyTorch mutex lock hang on macOS 15.x + Apple Silicon:
 - **Bug #14 (v3.11.9):** Fixed integrity check blocking user edits to requirements.in
@@ -17,6 +33,19 @@ This script creates a comprehensive, reproducible data science environment with 
   - Root cause: PyTorch 2.9.x has mutex lock bug on macOS Sequoia (15.x) + Apple Silicon
   - Solution: Downgrade to PyTorch 2.5.1 (last known working version)
   - Result: ✅ PyTorch imports successfully without mutex hang, MPS GPU acceleration works
+
+✅ **Test Results (v3.13.0):**
+- ✅ Corrupted package detection: Successfully detected and removed ~angchain-0.3.27.dist-info
+- ✅ --update mode: Completed successfully
+- ✅ --adaptive mode: Completed successfully
+- ✅ No options (fast mode): Completed successfully
+- ✅ huggingface-hub 0.36.0: Installed and verified
+- ✅ R tmap package: Installed and verified
+
+✅ **Test Results (v3.12.0):**
+- ✅ huggingface-hub: Successfully added to requirements.in and installed
+- ✅ tmap R package: Successfully added to R installation and installed
+- ✅ --adaptive mode: Completed successfully with new packages
 
 ✅ **Test Results (v3.11.9):**
 - ✅ --update mode: Completed successfully

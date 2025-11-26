@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.11.9 (November 2025)
+# Version: 3.13.0 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -11,6 +11,19 @@
 #           detection and installation, PyTorch safety checks, self-supervision framework,
 #           automatic bash upgrade to 4.0+ for modern features.
 #
+# v3.13.0 Feature: Automatic corrupted package detection and repair (November 26, 2025)
+#   - NEW: Auto-detect corrupted packages (packages with ~ prefix, missing RECORD files)
+#   - Auto-removes corrupted packages before any installation/upgrade attempts
+#   - Prevents "uninstall-no-record-file" errors that block package updates
+#   - Runs during pre-flight checks (all command-line options: --update, --adaptive, fast mode)
+#   - Fixes issues like corrupted langchain package that blocked installations
+#   - Self-healing: Corrupted packages are automatically reinstalled during next operation
+# v3.12.0 Feature: Add huggingface-hub Python package and tmap R package (November 26, 2025)
+#   - Added huggingface-hub to requirements.in for Hugging Face model hub access (>=0.19.0)
+#   - Added tmap R package to R package installation list for thematic map creation
+#   - User requested comprehensive package verification ensuring all required packages present
+#   - All other requested packages already present (neo4j, pydantic, lxml, spacy, torch, etc.)
+#   - Transitive dependencies excluded (following architecture: only top-level packages in requirements.in)
 # v3.11.9 Bugfix: Skip integrity check for requirements.in (November 26, 2025)
 #   - CRITICAL FIX: Removed integrity verification for requirements.in (user-editable source file)
 #   - Bug: Script verified requirements.in integrity before pip-compile, failing when users modified it
@@ -765,6 +778,63 @@ verify_no_conflicts() {
   return 0
 }
 
+# Detect and fix corrupted packages
+# Corrupted packages are identified by:
+# 1. "Ignoring invalid distribution ~packagename" warnings from pip
+# 2. Packages missing RECORD files (preventing uninstall/upgrade)
+detect_and_fix_corrupted_packages() {
+  if [ ! -d ".venv" ]; then
+    return 0  # No venv yet, nothing to check
+  fi
+
+  log_info "Checking for corrupted packages..."
+
+  # Get list of corrupted packages (those with ~ prefix in site-packages)
+  local site_packages=".venv/lib/python*/site-packages"
+  local corrupted_dirs=$(find $site_packages -maxdepth 1 -type d -name '~*' 2>/dev/null | xargs -n1 basename 2>/dev/null || true)
+
+  if [ -z "$corrupted_dirs" ]; then
+    log_info "No corrupted packages detected"
+    return 0
+  fi
+
+  echo "⚠️  Corrupted packages detected:"
+  local count=0
+  for dir in $corrupted_dirs; do
+    # Extract package name (remove ~ prefix and -*.dist-info suffix)
+    local pkg_name=$(echo "$dir" | sed 's/^~//' | sed 's/-[0-9].*//')
+    echo "   • $pkg_name (corrupted: $dir)"
+    count=$((count + 1))
+  done
+
+  log_warn "Found $count corrupted package(s)"
+  echo "🔧 Auto-fixing corrupted packages..."
+
+  # Remove corrupted directories
+  for dir in $corrupted_dirs; do
+    local full_path=$(find $site_packages -maxdepth 1 -type d -name "$dir" 2>/dev/null | head -1)
+    if [ -n "$full_path" ]; then
+      rm -rf "$full_path"
+      log_info "Removed corrupted directory: $dir"
+    fi
+  done
+
+  # Also remove any langchain directories without RECORD files
+  for pkg_dir in $(find $site_packages -maxdepth 1 -type d -name '*langchain*' 2>/dev/null); do
+    if [ ! -f "$pkg_dir/RECORD" ] && [ ! -f "$pkg_dir"*".dist-info/RECORD" ]; then
+      local pkg_basename=$(basename "$pkg_dir")
+      echo "   • Removing $pkg_basename (missing RECORD file)"
+      rm -rf "$pkg_dir"
+      log_info "Removed package without RECORD: $pkg_basename"
+    fi
+  done
+
+  echo "✅ Corrupted packages removed - they will be reinstalled cleanly"
+  log_info "Corrupted package cleanup complete"
+
+  return 0
+}
+
 # ============================================================================
 # SELF-HEALING EXECUTOR - Retry with exponential backoff and recovery
 # ============================================================================
@@ -988,7 +1058,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.11.8 - Self-Supervision Framework (Fully Functional)"
+log_info "Base Environment Setup Script v3.13.0 - Self-Supervision Framework (Fully Functional)"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -1477,6 +1547,10 @@ if [ -f "$METADATA_FILE" ]; then
     echo "   Last successful install: $LAST_INSTALL"
   fi
 fi
+
+# Check 7: Detect and fix corrupted packages
+echo "🔍 Checking for corrupted packages..."
+detect_and_fix_corrupted_packages
 
 echo "✅ All pre-flight checks passed"
 echo ""
@@ -4750,7 +4824,7 @@ if [ $R_INSTALL_SUCCESS -eq 1 ] && command -v R &>/dev/null; then
   fi
 
   # Install R packages
-  if ! Rscript -e "pkgs <- c('tidyverse', 'data.table', 'reticulate', 'bibliometrix', 'bibtex', 'httr', 'jsonlite', 'rcrossref', 'RefManageR', 'rvest', 'scholar', 'sp', 'stringdist'); missing <- setdiff(pkgs, rownames(installed.packages())); if (length(missing)) install.packages(missing, repos='https://cloud.r-project.org')" 2>/dev/null; then
+  if ! Rscript -e "pkgs <- c('tidyverse', 'data.table', 'reticulate', 'bibliometrix', 'bibtex', 'httr', 'jsonlite', 'rcrossref', 'RefManageR', 'rvest', 'scholar', 'sp', 'stringdist', 'tmap'); missing <- setdiff(pkgs, rownames(installed.packages())); if (length(missing)) install.packages(missing, repos='https://cloud.r-project.org')" 2>/dev/null; then
     echo "⚠️  Some R packages failed to install"
     R_INSTALL_SUCCESS=0
   fi
