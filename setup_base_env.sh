@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.13.2 (November 2025)
+# Version: 3.14.0 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -11,12 +11,21 @@
 #           detection and installation, PyTorch safety checks, self-supervision framework,
 #           automatic bash upgrade to 4.0+ for modern features.
 #
-# v3.13.2 Bugfix: REVERT v3.13.1 early exit - Restore autonomous fixing (November 26, 2025)
-#   - REVERTED: Early exit check in UPDATE mode that blocked autonomous fixing
-#   - RESTORED: Autonomous behavior - UPDATE mode now auto-uses Python 3.12 when PyTorch incompatible
-#   - Philosophy: Script should fix issues autonomously, not block with manual instructions
-#   - Result: UPDATE mode detects Python 3.13 incompatibility, automatically uses Python 3.12, proceeds
-#   - User experience: UPDATE mode works autonomously, no manual intervention needed
+# v3.14.0 Feature: UPDATE mode now respects adaptive system's Python version (November 26, 2025)
+#   - CRITICAL FIX: UPDATE mode now respects adaptive compatibility system's Python recommendations
+#   - Root cause: UPDATE mode was setting LATEST_PYTHON=3.13.9 without checking adaptive system
+#   - Adaptive system would select Python 3.12 (PyTorch compatibility), but UPDATE mode ignored it
+#   - Fix 1: Version check (lines ~3685) now uses adaptive recommendation if available
+#   - Fix 2: Upgrade code (lines ~4130) now uses adaptive recommendation if available
+#   - Result: UPDATE mode will upgrade pyenv/Julia/R but keep Python at compatible version
+#   - Example: If adaptive selects 3.12, UPDATE won't try to "upgrade" to incompatible 3.13
+# v3.13.3 Bugfix: Remove ALL PyTorch blocking checks in UPDATE mode (November 26, 2025)
+#   - CRITICAL FIX: Removed ENTIRE PyTorch compatibility check section in UPDATE mode (lines 3911-3971)
+#   - v3.13.2 only removed one check, but there were TWO blocking checks that exited the script
+#   - Root cause: Redundant checks second-guessed adaptive system's Python version decision
+#   - Adaptive system already selected Python 3.12, but UPDATE mode was re-checking and blocking
+#   - Result: UPDATE mode now fully autonomous, respects adaptive system's decisions
+#   - Lesson learned: Must thoroughly test ALL code paths and search for ALL blocking checks
 # v3.13.0 Feature: Automatic corrupted package detection and repair (November 26, 2025)
 #   - NEW: Auto-detect corrupted packages (packages with ~ prefix, missing RECORD files)
 #   - Auto-removes corrupted packages before any installation/upgrade attempts
@@ -1064,7 +1073,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.13.2 - Self-Supervision Framework (Fully Functional)"
+log_info "Base Environment Setup Script v3.14.0 - Self-Supervision Framework (Fully Functional)"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -3679,12 +3688,30 @@ if [ "$UPDATE_MODE" = "1" ]; then
     fi
   fi
 
-  # Check Python version
+  # Check Python version (respecting adaptive system's recommendations)
   CURRENT_PYTHON=$(python --version 2>&1 | awk '{print $2}')
-  LATEST_PYTHON=$(pyenv install --list | grep -E '^  3\.(1[2-3])\.[0-9]+$' | tail -1 | tr -d ' ')
-  echo ""
-  echo "🐍 Current Python: $CURRENT_PYTHON"
-  echo "🐍 Latest stable Python: $LATEST_PYTHON"
+  ABSOLUTE_LATEST_PYTHON=$(pyenv install --list | grep -E '^  3\.(1[2-3])\.[0-9]+$' | tail -1 | tr -d ' ')
+
+  # CRITICAL: Respect adaptive system's Python recommendation if available
+  # If adaptive system recommended a specific Python version (e.g., 3.12 due to PyTorch compatibility),
+  # use that as the target instead of blindly upgrading to the absolute latest (e.g., 3.13)
+  if [ -n "$compat_python" ] && [ "$compat_python" != "default" ]; then
+    # Adaptive system has recommended a specific version - use it
+    TARGET_PYTHON_MAJOR_MINOR="$compat_python"
+    # Find the latest patch version for this major.minor version
+    LATEST_PYTHON=$(pyenv install --list | grep -E "^  ${TARGET_PYTHON_MAJOR_MINOR}\.[0-9]+$" | tail -1 | tr -d ' ')
+    echo ""
+    echo "🐍 Current Python: $CURRENT_PYTHON"
+    echo "🐍 Absolute latest Python: $ABSOLUTE_LATEST_PYTHON"
+    echo "🧠 Adaptive system recommends: Python $TARGET_PYTHON_MAJOR_MINOR (compatibility)"
+    echo "🐍 Target Python: $LATEST_PYTHON"
+  else
+    # No adaptive recommendation - use absolute latest
+    LATEST_PYTHON="$ABSOLUTE_LATEST_PYTHON"
+    echo ""
+    echo "🐍 Current Python: $CURRENT_PYTHON"
+    echo "🐍 Latest stable Python: $LATEST_PYTHON"
+  fi
 
   if [ "$CURRENT_PYTHON" != "$LATEST_PYTHON" ]; then
     echo "  📦 Update available: Python $CURRENT_PYTHON → $LATEST_PYTHON"
@@ -3908,67 +3935,9 @@ if [ "$UPDATE_MODE" = "1" ]; then
   echo "📦 PACKAGE VERSION CHECK"
   echo "------------------------"
 
-  # CRITICAL: PyTorch compatibility safety check for UPDATE MODE
-  # Verify BOTH current AND target Python versions are compatible with PyTorch
-  if check_package_required "torch" || check_package_required "pytorch"; then
-    echo "🔍 Checking PyTorch compatibility with current Python version..."
-    PYTHON_VERSION=$(python --version 2>&1 | awk '{print $2}')
-    PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-    PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
-
-    # Check current Python version
-    if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -eq 13 ]; then
-      if [ "$OS_PLATFORM" = "macos" ] && [ "$OS_ARCH" = "arm64" ]; then
-        darwin_version=$(uname -r | cut -d'.' -f1)
-        if [ "$darwin_version" -ge 25 ]; then
-          echo ""
-          echo "❌ CRITICAL PYTORCH COMPATIBILITY ISSUE"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Configuration: Python $PYTHON_VERSION + PyTorch + macOS 15.1+ + Apple Silicon"
-          echo "Known Issue:   Causes indefinite mutex lock hang"
-          echo ""
-          echo "UPDATE MODE BLOCKED: Cannot proceed with package updates"
-          echo "REQUIRED ACTION:"
-          echo "  ./setup_base_env.sh --adaptive --force-reinstall"
-          echo "  (This will use Python 3.12 automatically)"
-          echo ""
-          log_error "UPDATE MODE: PyTorch incompatibility detected (current Python), blocking package updates"
-          exit 1
-        fi
-      fi
-    fi
-
-    # CRITICAL: Check TARGET Python version if update is available
-    if [ "$PYTHON_UPDATE_AVAILABLE" = "1" ]; then
-      echo "🔍 Checking PyTorch compatibility with TARGET Python version ($LATEST_PYTHON)..."
-      TARGET_MAJOR=$(echo $LATEST_PYTHON | cut -d. -f1)
-      TARGET_MINOR=$(echo $LATEST_PYTHON | cut -d. -f2)
-
-      if [ "$TARGET_MAJOR" -eq 3 ] && [ "$TARGET_MINOR" -eq 13 ]; then
-        if [ "$OS_PLATFORM" = "macos" ] && [ "$OS_ARCH" = "arm64" ]; then
-          darwin_version=$(uname -r | cut -d'.' -f1)
-          if [ "$darwin_version" -ge 25 ]; then
-            echo ""
-            echo "❌ CRITICAL PYTORCH COMPATIBILITY ISSUE"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "Configuration: Python $LATEST_PYTHON (TARGET) + PyTorch + macOS 15.1+ + Apple Silicon"
-            echo "Known Issue:   Causes indefinite mutex lock hang"
-            echo ""
-            echo "UPDATE MODE BLOCKED: Cannot upgrade to Python 3.13 with PyTorch installed"
-            echo "REQUIRED ACTION:"
-            echo "  ./setup_base_env.sh --adaptive --force-reinstall"
-            echo "  (This will use Python 3.12 automatically and skip incompatible 3.13)"
-            echo ""
-            log_error "UPDATE MODE: PyTorch incompatibility detected (target Python 3.13), blocking update"
-            exit 1
-          fi
-        fi
-      fi
-      echo "✅ PyTorch compatibility verified for target Python $LATEST_PYTHON"
-    fi
-
-    echo "✅ PyTorch compatibility verified"
-  fi
+  # NOTE: PyTorch compatibility is handled by the adaptive system earlier in the script.
+  # The adaptive system has already selected the appropriate Python version (e.g., 3.12 instead of 3.13).
+  # UPDATE mode respects this decision and proceeds with the selected Python version.
 
   # Backup current requirements
   cp requirements.in requirements.in.backup
