@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.13.1 (November 2025)
+# Version: 3.13.2 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -11,12 +11,12 @@
 #           detection and installation, PyTorch safety checks, self-supervision framework,
 #           automatic bash upgrade to 4.0+ for modern features.
 #
-# v3.13.1 Bugfix: Early PyTorch compatibility check in UPDATE mode (November 26, 2025)
-#   - FIX: UPDATE mode now exits early when Python 3.13 + PyTorch incompatibility detected
-#   - Before: Wasted ~1 min doing Homebrew/toolchain updates, then blocked at the end
-#   - After: Exits immediately with clear error message and recommended action
-#   - Saves time: No unnecessary Homebrew updates when upgrade is blocked anyway
-#   - User experience: Fails fast with actionable guidance (use --adaptive instead)
+# v3.13.2 Bugfix: REVERT v3.13.1 early exit - Restore autonomous fixing (November 26, 2025)
+#   - REVERTED: Early exit check in UPDATE mode that blocked autonomous fixing
+#   - RESTORED: Autonomous behavior - UPDATE mode now auto-uses Python 3.12 when PyTorch incompatible
+#   - Philosophy: Script should fix issues autonomously, not block with manual instructions
+#   - Result: UPDATE mode detects Python 3.13 incompatibility, automatically uses Python 3.12, proceeds
+#   - User experience: UPDATE mode works autonomously, no manual intervention needed
 # v3.13.0 Feature: Automatic corrupted package detection and repair (November 26, 2025)
 #   - NEW: Auto-detect corrupted packages (packages with ~ prefix, missing RECORD files)
 #   - Auto-removes corrupted packages before any installation/upgrade attempts
@@ -1064,7 +1064,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.13.1 - Self-Supervision Framework (Fully Functional)"
+log_info "Base Environment Setup Script v3.13.2 - Self-Supervision Framework (Fully Functional)"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
@@ -2299,27 +2299,6 @@ EOF
   "reason": "$compat_reason"
 }
 EOF
-
-      # UPDATE_MODE early exit: Block if PyTorch incompatibility prevents Python 3.13 upgrade
-      if [ "$UPDATE_MODE" = "1" ] && [ "$compat_issue_id" = "PYTHON_313_PYTORCH_MACOS151_ARM64" ]; then
-        echo ""
-        echo "❌ CRITICAL PYTORCH COMPATIBILITY ISSUE (Early Detection)"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "Configuration: Python 3.13 (TARGET) + PyTorch + macOS 15.1+ + Apple Silicon"
-        echo "Known Issue:   Causes indefinite mutex lock hang"
-        echo ""
-        echo "UPDATE MODE BLOCKED: Cannot upgrade to Python 3.13 with PyTorch installed"
-        echo "Current Python: $(python --version 2>&1 | awk '{print $2}' 2>/dev/null || echo 'unknown')"
-        echo "Recommended:    Python 3.12 (blocked by PyTorch compatibility)"
-        echo ""
-        echo "REQUIRED ACTION:"
-        echo "  Use --adaptive mode instead (updates packages, keeps Python 3.12):"
-        echo "  ./setup_base_env.sh --adaptive"
-        echo ""
-        log_error "UPDATE_MODE: Early exit due to PyTorch + Python 3.13 incompatibility"
-        release_lock
-        exit 1
-      fi
 
       # Auto-trigger force-reinstall if in UPDATE_MODE and venv exists with wrong Python version
       if [ "$UPDATE_MODE" = "1" ] && [ -d ".venv" ]; then
