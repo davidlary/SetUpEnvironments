@@ -1,6 +1,6 @@
 # Base Environment Setup Script
 
-**Version:** 3.11.8 (November 2025) - **Production-Grade with Fully Functional Self-Supervision**
+**Version:** 3.11.9 (November 2025) - **Production-Grade with PyTorch Mutex Lock Fix**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.11-3.13 (adaptive selection based on compatibility matrix)
 
@@ -8,7 +8,23 @@
 
 This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection, smart Rust toolchain installation, PyTorch safety checks, and **fully functional self-supervision with verification loops**.
 
-**✨ NEW in v3.11.5-3.11.8:** **Self-Supervision Framework Now Fully Functional** - Fixed 4 critical bugs that prevented the self-supervision framework from completing successfully:
+**✨ NEW in v3.11.9:** **PyTorch Mutex Lock RESOLVED + Bug #14 Fixed** - Complete fix for PyTorch mutex lock hang on macOS 15.x + Apple Silicon:
+- **Bug #14 (v3.11.9):** Fixed integrity check blocking user edits to requirements.in
+  - Issue: Script verified requirements.in integrity before pip-compile, failing when users modified it
+  - Fix: Skip integrity check entirely for requirements.in (user-editable source file)
+  - Impact: Users can now freely modify requirements.in without spurious integrity failures
+- **PyTorch Fix (v3.11.9):** Pinned PyTorch to 2.5.1 in requirements.in
+  - Root cause: PyTorch 2.9.x has mutex lock bug on macOS Sequoia (15.x) + Apple Silicon
+  - Solution: Downgrade to PyTorch 2.5.1 (last known working version)
+  - Result: ✅ PyTorch imports successfully without mutex hang, MPS GPU acceleration works
+
+✅ **Test Results (v3.11.9):**
+- ✅ --update mode: Completed successfully
+- ✅ No options (default): Completed successfully
+- ✅ --adaptive only: Completed successfully
+- ✅ PyTorch 2.5.1 import: No mutex hang, MPS GPU available, tensor operations working
+
+**✨ NEW in v3.11.5-3.11.8:** **Self-Supervision Framework Now Fully Functional** - Fixed 4 critical bugs:
 - **Bug #10 (v3.11.5):** Fixed pip-tools import name (pip_tools → piptools)
 - **Bug #11 (v3.11.6):** Fixed git config YAML parsing with auto-detection of corrupted environment variables
 - **Bug #12 (v3.11.7):** Fixed integrity check after pip-compile (now updates hash instead of verifying against stale hash)

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.11.8 (November 2025)
+# Version: 3.11.9 (November 2025)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -11,6 +11,14 @@
 #           detection and installation, PyTorch safety checks, self-supervision framework,
 #           automatic bash upgrade to 4.0+ for modern features.
 #
+# v3.11.9 Bugfix: Skip integrity check for requirements.in (November 26, 2025)
+#   - CRITICAL FIX: Removed integrity verification for requirements.in (user-editable source file)
+#   - Bug: Script verified requirements.in integrity before pip-compile, failing when users modified it
+#   - Root cause: requirements.in is MEANT to be edited by users to add/change packages
+#   - Impact: All --force-reinstall runs with modified requirements.in failed and rolled back
+#   - Fix: Skip integrity check entirely for requirements.in (lines 4395-4398), only verify generated files
+#   - Also pinned PyTorch to 2.5.1 to fix mutex lock hang on macOS 15.x + Apple Silicon
+#   - Now users can modify requirements.in without triggering spurious integrity failures
 # v3.11.8 Bugfix: Fix interactive prompt in non-interactive mode (November 25, 2025)
 #   - CRITICAL FIX: Skip interactive prompt when running in force mode or non-interactive sessions
 #   - Bug: Import check had `read -p` prompt that failed in non-interactive mode (with tee, background, etc.)
@@ -4392,12 +4400,10 @@ else
   echo "📦 Starting fast mode (use --adaptive for enhanced conflict resolution)..."
 fi
 
-# ENHANCEMENT 3: Verify requirements.in integrity before compilation
-echo "🔐 Verifying requirements.in integrity..."
-if [ -f "requirements.in" ]; then
-  verify_file_integrity "requirements.in"
-  log_info "requirements.in integrity check complete"
-fi
+# ENHANCEMENT 3: Skip integrity check for requirements.in (user-editable file)
+# requirements.in is meant to be edited by users, so we don't verify its integrity
+# Only verify generated files like requirements.txt after they are compiled
+log_info "Skipping integrity check for requirements.in (user-editable source file)"
 
 log_stage "STAGE: Compiling requirements with pip-compile"
 # 🚀 PERFORMANCE OPTIMIZATION: Wheel pre-compilation and cached installation
