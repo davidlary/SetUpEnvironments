@@ -3381,6 +3381,7 @@ def analyze_requirements(file_path):
     # Updated based on latest compatibility research (October 2025)
     # NOTE: UPDATE_MODE can test and update these adaptively based on conflict testing
     backtracking_prone_packages = {
+        'torch': '2.5.1',         # PyTorch - pinned due to macOS 15.1 + Apple Silicon mutex hang in 2.9.x
         'bqplot': '0.12.45',      # Default: Latest stable with bug fixes
         'ipywidgets': '8.1.7',    # Default: Latest 8.1.x with improvements
         'jupyterlab': '4.4.9',    # Default: Latest stable, built for JupyterLab 4
