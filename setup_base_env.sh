@@ -3382,14 +3382,15 @@ def analyze_requirements(file_path):
     # NOTE: UPDATE_MODE can test and update these adaptively based on conflict testing
     backtracking_prone_packages = {
         'torch': '2.5.1',         # PyTorch - pinned due to macOS 15.1 + Apple Silicon mutex hang in 2.9.x
+        'numpy': '2.2.6',         # NumPy - pinned for compatibility with current scientific stack
         'bqplot': '0.12.45',      # Default: Latest stable with bug fixes
-        'ipywidgets': '8.1.7',    # Default: Latest 8.1.x with improvements
+        'ipywidgets': '8.1.8',    # Default: Latest 8.1.x with improvements
         'jupyterlab': '4.4.9',    # Default: Latest stable, built for JupyterLab 4
         # 'jupyter-dash': REMOVED - Package obsolete, archived June 2024
         'geemap': '0.36.6',       # Default: Latest stable (Oct 2025) - adaptive system can update
-        'plotly': '5.15.0',       # Default: Keep 5.x (v6+ has breaking changes, needs testing)
-        'panel': '1.8.2',         # Default: Latest with bokeh 3.7-3.8 support
-        'bokeh': '3.8.0',         # Default: Latest 3.x, compatible with panel 1.8.2
+        'plotly': '6.5.0',        # Default: Latest 6.x with new features
+        'panel': '1.8.3',         # Default: Latest with bokeh 3.7-3.8 support
+        'bokeh': '3.8.1',         # Default: Latest 3.x, compatible with panel 1.8.3
         'voila': '0.5.11',        # Default: Latest patch release, JupyterLab 4 based
         'selenium': '4.38.0',     # Default: Latest stable (Oct 2025) - adaptive system can update
         # 'nose': REMOVED - Deprecated since 2015, migrate to pytest
@@ -3955,7 +3956,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
     echo "--------------------"
 
     # Compare versions for smart constraint packages
-    for pkg in torch numpy ipywidgets geemap plotly panel bokeh voila selenium; do
+    for pkg in torch numpy bqplot ipywidgets jupyterlab geemap plotly panel bokeh voila selenium; do
       CURRENT=$(grep -i "^${pkg}==" requirements.in.backup | sed 's/.*==//' | sed 's/[[:space:]].*//' || echo "not pinned")
       LATEST=$(grep -i "^${pkg}==" requirements.txt.test | sed 's/.*==//' || echo "not found")
 
@@ -4018,7 +4019,7 @@ if [ "$UPDATE_MODE" = "1" ]; then
   SMART_CONSTRAINTS=()
 
   # Read current smart constraint versions from requirements.in (adaptive, not hardcoded!)
-  for pkg in torch numpy ipywidgets geemap plotly panel bokeh voila selenium; do
+  for pkg in torch numpy bqplot ipywidgets jupyterlab geemap plotly panel bokeh voila selenium; do
     CURRENT_CONSTRAINT=$(grep -i "^${pkg}[=><!]" requirements.in.backup | sed 's/[[:space:]].*//' || echo "${pkg}")
     SMART_CONSTRAINTS+=("$CURRENT_CONSTRAINT")
   done
@@ -4912,7 +4913,7 @@ echo ""
 echo "🔧 v3.2 REFINEMENTS (6 improvements):"
 echo "   11. 🧹 Stale Lock Detection - Auto-remove zombie lock files"
 echo "   12. 📝 Stage Logging - Timestamped progress in lock file for debugging"
-echo "   13. 🎯 Smart Constraints - 9 packages pinned to prevent backtracking (torch, numpy, ipywidgets, geemap, plotly, panel, bokeh, voila, selenium)"
+echo "   13. 🎯 Smart Constraints - 11 packages pinned to prevent backtracking (torch, numpy, bqplot, ipywidgets, jupyterlab, geemap, plotly, panel, bokeh, voila, selenium)"
 echo "   14. 🧠 Adaptive Conflict Resolution - 2-tier strategy (Fast/Adaptive)"
 echo "   15. 🚪 Early Exit Optimization - Skip perfect environments instantly"
 echo "   16. 📦 Package Expansion - 113→125 packages (23 added total, now all present)"
