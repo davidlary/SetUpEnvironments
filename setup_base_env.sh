@@ -409,6 +409,7 @@ for arg in "$@"; do
       ;;
     --force-reinstall)
       FORCE_REINSTALL=1
+      ENABLE_ADAPTIVE=1  # Auto-enable adaptive mode for safety (detects Python/package compatibility issues)
       shift
       ;;
     --update)
@@ -2097,13 +2098,14 @@ detect_optimal_python_version() {
   # Each entry: OS + Architecture + OS Version + Package -> Python Version + Reason
 
   # ISSUE 1: Python 3.13 + PyTorch + macOS 15.x + Apple Silicon = Mutex Hang
+  # CRITICAL: Python 3.12.9+ has regression - must use 3.12.8 or earlier
   if [ "$os_platform" = "macos" ] && [ "$os_arch" = "arm64" ]; then
     # Check if macOS 15.x (Darwin 25.x)
     local darwin_version=$(uname -r | cut -d'.' -f1)
     if [ "$darwin_version" -ge 25 ] && (check_package_required "torch" || check_package_required "pytorch"); then
-      recommended_python="3.12"
-      reason="Python 3.13 + PyTorch + macOS 15.1 + Apple Silicon causes mutex lock hang"
-      issue_id="PYTHON_313_PYTORCH_MACOS151_ARM64"
+      recommended_python="3.12.8"
+      reason="Python 3.12.9+ has mutex lock regression on macOS 15.x + Apple Silicon; 3.12.8 is stable"
+      issue_id="PYTHON_3129_PYTORCH_MACOS151_ARM64"
     fi
   fi
 
@@ -2116,14 +2118,15 @@ detect_optimal_python_version() {
     fi
   fi
 
-  # ISSUE 3: Python 3.13 + sentence-transformers + macOS 15.x + Apple Silicon
+  # ISSUE 3: Python 3.12.9+ + sentence-transformers + macOS 15.x + Apple Silicon
+  # CRITICAL: Python 3.12.9+ has regression - must use 3.12.8 or earlier
   if [ "$os_platform" = "macos" ] && [ "$os_arch" = "arm64" ]; then
     local darwin_version=$(uname -r | cut -d'.' -f1)
     if [ "$darwin_version" -ge 25 ] && check_package_required "sentence-transformers"; then
       if [ -z "$recommended_python" ]; then
-        recommended_python="3.12"
-        reason="Python 3.13 + sentence-transformers + macOS 15.1 + Apple Silicon causes threading issues"
-        issue_id="PYTHON_313_SENT_TRANS_MACOS151_ARM64"
+        recommended_python="3.12.8"
+        reason="Python 3.12.9+ has mutex lock regression with sentence-transformers on macOS 15.x + Apple Silicon; 3.12.8 is stable"
+        issue_id="PYTHON_3129_SENT_TRANS_MACOS151_ARM64"
       fi
     fi
   fi
