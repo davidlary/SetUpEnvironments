@@ -1,12 +1,30 @@
 # Base Environment Setup Script
 
-**Version:** 3.13.2 (November 2025) - **Production-Grade with Autonomous Issue Resolution**
+**Version:** 3.14.0 (December 2024) - **Stable Python Version Filtering + sentence-transformers Fix**
 **Script:** `setup_base_env.sh`
 **Python Version:** 3.11-3.13 (adaptive selection based on compatibility matrix)
 
 ## Overview
 
-This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints, hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection, smart Rust toolchain installation, PyTorch safety checks, automatic corrupted package detection and repair, and **fully functional self-supervision with verification loops**.
+This script creates a comprehensive, reproducible data science environment with Python, R, and Julia support. It features sophisticated package management with smart constraints (pip-compile/pip-sync workflow), hybrid conflict resolution, performance optimizations, intelligent snapshot strategy, dynamic pip version management, automatic security vulnerability scanning, adaptive compatibility detection with Python 3.12.8 pin for sentence-transformers, stable Python version filtering to exclude beta releases, smart Rust toolchain installation, PyTorch safety checks, automatic corrupted package detection and repair, and **fully functional self-supervision with verification loops**.
+
+**✨ NEW in v3.14.0:** **Beta Python Version Filtering + sentence-transformers Mutex Hang Fixed** - Complete solution for macOS Sequoia 15.x compatibility:
+- **Problem:** UPDATE mode was selecting unreleased beta Python versions (3.12.9+, 3.13.2+) from pyenv, causing compatibility issues
+- **Root cause:** Python 3.12.12 (beta) has threading/mutex regression causing sentence-transformers to hang indefinitely on macOS Sequoia 15.x + Apple Silicon
+- **Error symptom:** `[mutex.cc : 452] RAW: Lock blocking` - model loading hangs, Ctrl+C doesn't work
+- **Solution 1 (Beta Filtering):** Implemented regex filtering in UPDATE mode (lines 3696-3738) to cap at stable releases only
+  - Python 3.12.x: Maximum 3.12.8 (latest stable, released Dec 3, 2024)
+  - Python 3.13.x: Maximum 3.13.1 (latest stable, released Dec 3, 2024)
+  - Prevents selection of unreleased beta versions (3.12.9-3.12.12, 3.13.2+)
+- **Solution 2 (sentence-transformers Fix):** Hardcoded Python 3.12.8 pin in adaptive detection (lines 2106-2108, 2127-2129)
+  - Automatic detection of macOS Sequoia 15.x (Darwin 25+) + Apple Silicon + sentence-transformers
+  - Forces Python 3.12.8 installation (bypasses beta versions)
+  - Result: ✅ sentence-transformers loads in 3.51 seconds (vs. infinite hang on 3.12.12)
+- **Compatibility:** All modes (default, --adaptive, --force-reinstall, --update) now correctly use stable Python versions
+- **Verification:** Direct pyenv testing confirms beta filtering working, OS detection functional
+- **Git commits:** 139c8de (adaptive pin), 515e2ae (UPDATE mode filtering)
+- **Documentation:** /tmp/BETA_FILTERING_FIX_SUMMARY_DEC3.md, /tmp/FINAL_SOLUTION_SUMMARY_DEC3.md
+- **Test proof:** /tmp/python3128_test_result.log shows Python 3.12.8 resolves the mutex hang
 
 **✨ NEW in v3.13.2:** **Autonomous Issue Resolution Restored** - Fix defeats manual intervention requirement:
 - **Problem:** v3.13.1 introduced early exit that blocked UPDATE mode, requiring manual switch to --adaptive
@@ -742,6 +760,161 @@ jupyter kernelspec list
 # Test R integration
 python -c "from rpy2.robjects import r; print('✅ R integration works')"
 ```
+
+## Package Management: pip-compile and pip-sync Workflow
+
+The setup script uses `pip-tools` (pip-compile and pip-sync) for deterministic, reproducible package management. This workflow provides several advantages over traditional `requirements.txt` files:
+
+### What is pip-compile and pip-sync?
+
+**pip-compile:**
+- Reads `requirements.in` (your high-level package specifications)
+- Resolves all transitive dependencies
+- Pins ALL packages (including sub-dependencies) to specific versions
+- Generates `requirements.txt` with complete dependency tree
+
+**pip-sync:**
+- Reads `requirements.txt` (pinned dependencies from pip-compile)
+- Synchronizes your virtual environment to EXACTLY match requirements.txt
+- Uninstalls packages not in requirements.txt (prevents dependency drift)
+- Installs missing packages
+- Updates packages to pinned versions
+
+### Why Use This Workflow?
+
+**Traditional pip install -r requirements.txt:**
+- ❌ Only specifies top-level packages
+- ❌ Sub-dependencies use version ranges (non-deterministic)
+- ❌ Different installs can resolve to different versions
+- ❌ Hard to reproduce exact environment
+- ❌ Dependency conflicts discovered at install time (too late)
+
+**pip-compile + pip-sync:**
+- ✅ **Deterministic:** Same requirements.in always produces same environment
+- ✅ **Reproducible:** Lock file (requirements.txt) ensures identical installs
+- ✅ **Conflict detection:** pip-compile catches conflicts before install
+- ✅ **Clean environment:** pip-sync removes unused/outdated packages
+- ✅ **Update control:** Smart constraints prevent breaking upgrades
+- ✅ **Fast rollback:** pip-sync can restore from any previous requirements.txt
+
+### How setup_base_env.sh Uses This Workflow
+
+**1. Source File (requirements.in):**
+```python
+# User-editable source file
+# Only specify TOP-LEVEL packages, not transitive dependencies
+pandas>=2.0.0
+torch==2.5.1  # Pinned for macOS Sequoia compatibility
+sentence-transformers>=3.0.0
+```
+
+**2. Compilation (pip-compile):**
+```bash
+# Script automatically runs:
+pip-compile --resolver=backtracking requirements.in
+```
+
+**3. Generated Lock File (requirements.txt):**
+```python
+# Auto-generated - DO NOT EDIT MANUALLY
+# Complete dependency tree with pinned versions
+certifi==2024.2.2
+    # via requests
+charset-normalizer==3.3.2
+    # via requests
+numpy==2.2.6
+    # via pandas, torch, sentence-transformers
+pandas==2.2.1
+    # via -r requirements.in
+requests==2.31.0
+    # via huggingface-hub
+sentence-transformers==3.1.1
+    # via -r requirements.in
+torch==2.5.1
+    # via -r requirements.in
+```
+
+**4. Installation (pip-sync):**
+```bash
+# Script automatically runs:
+pip-sync requirements.txt
+```
+
+### Smart Constraints System
+
+The script uses "smart constraints" to prevent breaking package upgrades while allowing safe updates:
+
+**Constraint Categories:**
+1. **Strict pins** (e.g., `torch==2.5.1`): Never auto-update (known regressions)
+2. **Smart constraints** (e.g., `pandas>=2.0.0,<3.0`): Allow minor updates, block major
+3. **Version ranges** (e.g., `numpy>=1.24`): Allow updates within API-stable ranges
+
+**Adaptive Constraint Testing:**
+- UPDATE mode tests if smart constraints can be safely relaxed
+- Creates temporary test environment to check for conflicts
+- Only updates requirements.in if ALL tests pass
+- Preserves stability while allowing safe upgrades
+
+### Manual Package Management
+
+**Adding New Packages:**
+```bash
+# 1. Edit requirements.in (add high-level package only)
+echo "scikit-learn>=1.3.0" >> base-env/requirements.in
+
+# 2. Recompile and sync
+cd base-env
+pip-compile requirements.in
+pip-sync requirements.txt
+```
+
+**Updating Packages:**
+```bash
+# Option 1: Let UPDATE mode handle it (recommended)
+./setup_base_env.sh --update
+
+# Option 2: Manual update
+cd base-env
+# Edit requirements.in to relax constraint
+# e.g., change pandas>=2.0.0,<2.2 to pandas>=2.0.0,<2.3
+pip-compile requirements.in
+pip-sync requirements.txt
+```
+
+**Removing Packages:**
+```bash
+# 1. Remove from requirements.in
+# (Edit file to remove the package line)
+
+# 2. Recompile and sync
+cd base-env
+pip-compile requirements.in
+pip-sync requirements.txt  # Automatically uninstalls removed package + unused deps
+```
+
+### Integration with setup_base_env.sh
+
+**Automatic Operations:**
+1. **Initial install:** Compiles requirements.in → installs via pip-sync
+2. **UPDATE mode:** Tests updated requirements.in → recompiles if safe → syncs
+3. **Rollback:** Restores previous requirements.txt → syncs to rollback state
+4. **Integrity checks:** Verifies requirements.txt hash matches installation
+5. **Conflict detection:** pip-compile catches dependency conflicts early
+
+**Files Managed:**
+- `requirements.in` - User-editable source (YOU edit this)
+- `requirements.txt` - Auto-generated lock file (NEVER edit manually)
+- `requirements.in.backup` - Backup before UPDATE mode changes
+- `.requirements.txt.hash` - Integrity check for self-supervision
+
+**Best Practices:**
+- ✅ Edit `requirements.in` directly to add/remove/update packages
+- ✅ Run `pip-compile` after editing requirements.in
+- ✅ Run `pip-sync` to apply changes to your environment
+- ✅ Commit both requirements.in AND requirements.txt to version control
+- ❌ Never edit requirements.txt manually (auto-generated)
+- ❌ Don't use `pip install` directly (breaks pip-sync synchronization)
+- ❌ Don't specify transitive dependencies in requirements.in (pip-compile handles this)
 
 ## Production-Grade Safety Features
 
