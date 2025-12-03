@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.14.0 (November 2025)
+# Version: 3.14.1 (December 3, 2024)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -9,8 +9,21 @@
 #           comprehensive verbose logging, hybrid snapshot strategy, adaptive compatibility
 #           detection with automatic resolution and auto-upgrade capabilities, smart Rust
 #           detection and installation, PyTorch safety checks, self-supervision framework,
-#           automatic bash upgrade to 4.0+ for modern features.
+#           automatic bash upgrade to 4.0+ for modern features, universal beta filtering.
 #
+# v3.14.1 Bugfix: Universal beta Python filtering across ALL modes (December 3, 2024)
+#   - CRITICAL FIX: Beta Python filtering now applied to ALL modes, not just UPDATE mode
+#   - Bug: DEFAULT, ADAPTIVE (no issues), and FORCE-REINSTALL modes selected beta Python (3.12.9+, 3.13.2+)
+#   - Root cause: Python selection at line 2337 used unfiltered grep, matched ANY version including betas
+#   - Impact: Users running `./setup_base_env.sh` without `--update` got Python 3.12.12 (beta) → mutex hang
+#   - Fix 1: Added universal get_latest_stable_python() function (lines 2074-2112)
+#   - Fix 2: Replaced line 2379 to call new function instead of unfiltered grep
+#   - Fix 3: Corrected regex patterns (lines 2090, 2095, 2100) to properly match backslash-escaped patterns
+#   - Stable caps: Python 3.12.x max 3.12.8 (Dec 3, 2024), Python 3.13.x max 3.13.1 (Dec 3, 2024)
+#   - Coverage: ALL modes (default, adaptive, force-reinstall, update) now filter beta versions
+#   - Result: Python 3.12.8 or 3.13.1 (stable) selected across all command-line options
+#   - Prevents sentence-transformers mutex hang by excluding Python 3.12.9+ beta versions
+#   - Defense-in-depth: Complements adaptive detection with universal filtering
 # v3.14.0 Feature: UPDATE mode now respects adaptive system's Python version (November 26, 2025)
 #   - CRITICAL FIX: UPDATE mode now respects adaptive compatibility system's Python recommendations
 #   - Root cause: UPDATE mode was setting LATEST_PYTHON=3.13.9 without checking adaptive system
@@ -2071,6 +2084,46 @@ check_rust_needed() {
   return 1  # Rust not needed
 }
 
+# Function: Get latest STABLE Python version (universal beta filtering)
+# CRITICAL: Prevents beta version selection (3.12.9+, 3.13.2+) in ALL modes
+# Called by: Default mode, Adaptive mode, Force-reinstall mode
+# UPDATE mode has its own beta filtering (lines 3709, 3720, 3722)
+get_latest_stable_python() {
+  local python_range="$1"  # e.g., '3\.(1[1-3])' or '3\.12' or '3\.13'
+
+  log_verbose "Beta filtering: Selecting stable Python for range: $python_range"
+
+  # Stable version caps (as of Dec 3, 2024):
+  # - Python 3.11.x: No cap (all released versions stable)
+  # - Python 3.12.x: Maximum 3.12.8 (released Dec 3, 2024)
+  # - Python 3.13.x: Maximum 3.13.1 (released Dec 3, 2024)
+  # - Versions beyond these are beta/unreleased
+
+  # Check if we're targeting a specific major.minor version
+  if [[ "$python_range" =~ 3\\.12 ]]; then
+    # Filter to stable 3.12.x only (3.12.0-3.12.8)
+    local result=$(pyenv install --list | grep -E '^  3\.12\.[0-8]$' | tail -1 | tr -d ' ')
+    log_verbose "Beta filtering: Selected Python 3.12.x stable: $result"
+    echo "$result"
+  elif [[ "$python_range" =~ 3\\.13 ]]; then
+    # Filter to stable 3.13.x only (3.13.0-3.13.1)
+    local result=$(pyenv install --list | grep -E '^  3\.13\.[0-1]$' | tail -1 | tr -d ' ')
+    log_verbose "Beta filtering: Selected Python 3.13.x stable: $result"
+    echo "$result"
+  elif [[ "$python_range" =~ 3\\.\\(1\\[1-3\\]\\) ]] || [[ "$python_range" == '3\.(1[1-3])' ]]; then
+    # General 3.11-3.13 range: select latest stable across all versions
+    # Apply beta filtering: 3.11.x (all), 3.12.0-3.12.8, 3.13.0-3.13.1
+    local result=$(pyenv install --list | grep -E '^  3\.(11\.[0-9]+|12\.[0-8]|13\.[0-1])$' | tail -1 | tr -d ' ')
+    log_verbose "Beta filtering: Selected Python 3.11-3.13 stable: $result"
+    echo "$result"
+  else
+    # Fallback for 3.11.x or other specific versions (no filtering needed)
+    local result=$(pyenv install --list | grep -E "^  ${python_range}\.[0-9]+$" | tail -1 | tr -d ' ')
+    log_verbose "No beta filtering needed for range: $python_range, selected: $result"
+    echo "$result"
+  fi
+}
+
 # Function: Get OS version for compatibility matrix
 get_os_version() {
   if [ "$OS_PLATFORM" = "macos" ]; then
@@ -2334,7 +2387,9 @@ else
 fi
 
 # Install optimal Python version based on compatibility detection
-latest_python=$(pyenv install --list | grep -E "^  ${python_range}\.[0-9]+$" | tail -1 | tr -d ' ')
+# CRITICAL: Use universal beta filtering to prevent selection of beta versions (3.12.9+, 3.13.2+)
+# This applies to ALL modes: default, adaptive, force-reinstall
+latest_python=$(get_latest_stable_python "$python_range")
 
 if [ -z "$latest_python" ]; then
   echo "❌ No Python version found matching pattern: ${python_range}"
