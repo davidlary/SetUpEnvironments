@@ -3695,7 +3695,18 @@ if [ "$UPDATE_MODE" = "1" ]; then
 
   # Check Python version (respecting adaptive system's recommendations)
   CURRENT_PYTHON=$(python --version 2>&1 | awk '{print $2}')
-  ABSOLUTE_LATEST_PYTHON=$(pyenv install --list | grep -E '^  3\.(1[2-3])\.[0-9]+$' | tail -1 | tr -d ' ')
+
+  # STABLE VERSION FILTERING: Only use officially released stable Python versions
+  # As of Dec 2024:
+  # - Python 3.12.x: Latest stable is 3.12.8 (Dec 3, 2024)
+  # - Python 3.13.x: Latest stable is 3.13.1 (Dec 3, 2024)
+  # - Versions beyond these (3.12.9+, 3.13.2+) are beta/unreleased
+  #
+  # This prevents issues like Python 3.12.12 (beta) which has mutex/threading regressions
+
+  # Get absolute latest stable Python across all major.minor versions
+  # Filter to stable versions only: 3.12.0-3.12.8, 3.13.0-3.13.1
+  ABSOLUTE_LATEST_PYTHON=$(pyenv install --list | grep -E '^  3\.(12\.[0-8]|13\.[0-1])$' | tail -1 | tr -d ' ')
 
   # CRITICAL: Respect adaptive system's Python recommendation if available
   # If adaptive system recommended a specific Python version (e.g., 3.12 due to PyTorch compatibility),
@@ -3703,15 +3714,23 @@ if [ "$UPDATE_MODE" = "1" ]; then
   if [ -n "$compat_python" ] && [ "$compat_python" != "default" ]; then
     # Adaptive system has recommended a specific version - use it
     TARGET_PYTHON_MAJOR_MINOR="$compat_python"
-    # Find the latest patch version for this major.minor version
-    LATEST_PYTHON=$(pyenv install --list | grep -E "^  ${TARGET_PYTHON_MAJOR_MINOR}\.[0-9]+$" | tail -1 | tr -d ' ')
+    # Find the latest STABLE patch version for this major.minor version
+    # Apply stable version filtering based on major.minor
+    if [ "$TARGET_PYTHON_MAJOR_MINOR" = "3.12" ]; then
+      LATEST_PYTHON=$(pyenv install --list | grep -E "^  3\.12\.[0-8]$" | tail -1 | tr -d ' ')
+    elif [ "$TARGET_PYTHON_MAJOR_MINOR" = "3.13" ]; then
+      LATEST_PYTHON=$(pyenv install --list | grep -E "^  3\.13\.[0-1]$" | tail -1 | tr -d ' ')
+    else
+      # Fallback for other versions (no filtering)
+      LATEST_PYTHON=$(pyenv install --list | grep -E "^  ${TARGET_PYTHON_MAJOR_MINOR}\.[0-9]+$" | tail -1 | tr -d ' ')
+    fi
     echo ""
     echo "🐍 Current Python: $CURRENT_PYTHON"
-    echo "🐍 Absolute latest Python: $ABSOLUTE_LATEST_PYTHON"
+    echo "🐍 Absolute latest stable Python: $ABSOLUTE_LATEST_PYTHON"
     echo "🧠 Adaptive system recommends: Python $TARGET_PYTHON_MAJOR_MINOR (compatibility)"
-    echo "🐍 Target Python: $LATEST_PYTHON"
+    echo "🐍 Target Python (stable): $LATEST_PYTHON"
   else
-    # No adaptive recommendation - use absolute latest
+    # No adaptive recommendation - use absolute latest stable
     LATEST_PYTHON="$ABSOLUTE_LATEST_PYTHON"
     echo ""
     echo "🐍 Current Python: $CURRENT_PYTHON"
