@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base Environment Setup Script
-# Version: 3.14.1 (December 3, 2024)
+# Version: 3.14.2 (December 4, 2024)
 #
 # Comprehensive data science environment with Python 3.11-3.13, R, and Julia support.
 # Features: Smart constraints, hybrid conflict resolution, performance optimizations,
@@ -1087,7 +1087,7 @@ get_safe_pip_constraint() {
 }
 
 log_info "==================================================================="
-log_info "Base Environment Setup Script v3.14.0 - Self-Supervision Framework (Fully Functional)"
+log_info "Base Environment Setup Script v3.14.2 - Self-Supervision Framework (Fully Functional)"
 log_info "Log file: $LOG_FILE"
 if [ "$VERBOSE_LOGGING" = "1" ]; then
   log_info "Verbose logging: ENABLED"
