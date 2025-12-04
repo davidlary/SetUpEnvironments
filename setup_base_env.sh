@@ -2636,9 +2636,10 @@ if [ -f "$API_KEYS_YAML" ]; then
     echo "🔧 Configuring git with credentials from .env-keys.yml..."
 
     # Use self-supervision framework for git configuration (non-fatal due to YAML parsing bug)
+    # Use --replace-all to handle cases where duplicate values exist
     if ! perform_verified_operation \
       "Configure git with $GITHUB_EMAIL" \
-      "git config --global user.email \"$GITHUB_EMAIL\" && git config --global user.name \"$GITHUB_NAME\"" \
+      "git config --global --replace-all user.email \"$GITHUB_EMAIL\" && git config --global --replace-all user.name \"$GITHUB_NAME\"" \
       "verify_git_config \"$GITHUB_EMAIL\" \"$GITHUB_NAME\"" \
       "git:email=$GITHUB_EMAIL:name=$GITHUB_NAME" \
       "" \
@@ -2647,9 +2648,10 @@ if [ -f "$API_KEYS_YAML" ]; then
     fi
 
     # Set local repository config (if we're in a git repo)
+    # Use --replace-all to handle cases where duplicate values exist
     if [ -d .git ]; then
-      git config user.email "$GITHUB_EMAIL"
-      git config user.name "$GITHUB_NAME"
+      git config --replace-all user.email "$GITHUB_EMAIL"
+      git config --replace-all user.name "$GITHUB_NAME"
       log_info "Git local config: email=$GITHUB_EMAIL, name=$GITHUB_NAME"
     fi
 
