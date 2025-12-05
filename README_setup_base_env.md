@@ -31,6 +31,15 @@ This script creates a comprehensive, reproducible data science environment with 
 - **Git commit:** a5e87e6 (December 3, 2024)
 - **Documentation:** /tmp/FINAL_VERIFICATION_V3141_DEC3.md
 
+**✨ UPDATE (December 4, 2024):** **Package Addition - rasterstats** - Enhanced geospatial analysis capabilities:
+- **Added Package:** `rasterstats>=0.20.0` for zonal statistics and raster-vector operations
+- **Category:** Geospatial Tools (now 5 packages: geopandas, geemap, earthengine-api, spyndex, rasterstats)
+- **Use Case:** Summarize geospatial raster datasets based on vector geometries
+- **Dependencies:** Automatically installs affine, click, cligj, fiona, rasterio, shapely, simplejson
+- **Compatibility:** Works with all command-line modes (default, --adaptive, --force-reinstall, --update)
+- **Total Packages:** 151 direct Python packages (+ dependencies)
+- **Verification:** ✅ Tested across all installation modes, imports successfully, zonal_stats function available
+
 **✨ NEW in v3.14.0:** **Beta Python Version Filtering + sentence-transformers Mutex Hang Fixed** - Complete solution for macOS Sequoia 15.x compatibility:
 - **Problem:** UPDATE mode was selecting unreleased beta Python versions (3.12.9+, 3.13.2+) from pyenv, causing compatibility issues
 - **Root cause:** Python 3.12.12 (beta) has threading/mutex regression causing sentence-transformers to hang indefinitely on macOS Sequoia 15.x + Apple Silicon
@@ -425,7 +434,7 @@ For detailed information about update mode behavior, test output examples, and t
 - **Pip Version Pinning**: pip < 25.2 for compatibility with pip-tools 7.5.1
 
 ### 🔧 Comprehensive Coverage
-- **150 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
+- **151 Direct Python Packages** (+ dependencies): ML, deep learning, visualization, geospatial, web deployment, APIs, testing, web scraping, graph databases, documentation, scientific data formats, LLM frameworks
   - **LATEST ADDITIONS (21 packages added Oct 2025)**:
     - NLP & Embeddings: sentence-transformers, textstat, fuzzywuzzy, python-levenshtein, rapidfuzz
     - ML & Clustering: hdbscan, umap-learn
@@ -1162,8 +1171,8 @@ torch (PyTorch), tensorflow, keras
 ### 📈 Visualization (12)
 matplotlib, seaborn, plotly, kaleido, bokeh, altair, upsetplot, dash, fast-dash, dash-leaflet, pyvis
 
-### 🌍 Geospatial Tools (4)
-geopandas, geemap, earthengine-api, spyndex
+### 🌍 Geospatial Tools (5)
+geopandas, geemap, earthengine-api, spyndex, rasterstats
 
 ### 🧪 Interactive Development (8)
 jupyter, jupyterlab, notebook, ipython, ipywidgets, voila, nbgrader, papermill
@@ -1554,9 +1563,9 @@ See `Old/README.md` for historical versions:
 
 ---
 
-**Last Updated:** November 21, 2025
+**Last Updated:** December 4, 2024
 **Maintained by:** David Lary
-**Python Version:** 3.13
-**Total Packages:** Python (150 direct + dependencies), R (13), Julia (IJulia)
+**Python Version:** 3.12.8 (adaptive selection, 3.13.1 stable available)
+**Total Packages:** Python (151 direct + dependencies), R (13), Julia (IJulia)
 **Version:** 3.9.2 with automatic git configuration, fixed YAML parsing, accurate memory detection for Apple Silicon, dynamic pip constraints, automatic security auditing, and package import validation
 **Note:** gremlinpython now included (aenum conflict resolved Oct 2025), 21 new packages added from PedagogicalEngine requirements, kaleido and upsetplot added for visualization, python-docx added for document processing

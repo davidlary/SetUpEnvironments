@@ -21,14 +21,14 @@ hdbscan  # Density-based clustering (>=0.8.0)
 umap-learn  # Dimensionality reduction (>=0.5.0)
 
 # 🔥 Deep Learning
-torch  # PyTorch deep learning framework (>=2.0.0)
+torch==2.5.1  # PyTorch deep learning framework - pinned to 2.5.1 due to mutex lock hang in 2.9.x on macOS 15.x + Apple Silicon
 tensorflow  # TensorFlow deep learning framework (>=2.15.0)
 keras  # High-level deep learning API (>=3.0.0)
 
 # 📈 Visualization & Plotting
 matplotlib  # Basic plotting (>=3.7.0)
 seaborn  # Statistical visualization (>=0.12.0)
-plotly==6.4.0  # Updated by adaptive system
+plotly==6.5.0  # Updated by adaptive system
 kaleido  # Static image export for plotly (>=0.2.0)
 bokeh==3.8.1  # Updated by adaptive system
 altair  # Statistical visualization grammar
@@ -43,6 +43,7 @@ geopandas  # Geospatial data processing
 geemap==0.36.6  # Updated by adaptive system
 earthengine-api  # Google Earth Engine API
 spyndex  # Spectral indices
+rasterstats  # Zonal statistics for geospatial raster datasets (>=0.20.0)
 
 # 🧪 Interactive Development
 jupyter  # Interactive notebooks
@@ -75,7 +76,7 @@ p5  # Creative coding
 streamlit>=1.28.0  # Web apps for ML (QA requirement)
 streamlit-aggrid>=0.3.4  # Streamlit data grid component (QA requirement)
 dash  # Web applications
-panel==1.8.2  # Updated by adaptive system
+panel==1.8.3  # Updated by adaptive system
 gradio  # ML model interfaces
 flask  # Web framework
 fastapi  # Modern web API framework
@@ -174,7 +175,9 @@ sphinx  # Sphinx documentation generator (>=7.0.0)
 sphinx-rtd-theme  # ReadTheDocs theme for Sphinx (>=2.0.0)
 
 # 🤖 Machine Learning - Advanced
-transformers  # Hugging Face transformers (conflicts with chromadb tokenizers)
+transformers<4.52.0  # Smart constraint (adaptive default)
+tokenizers==0.15.2  # Pinned to stable version - 0.19+ has threading issues on macOS 15.1+ Apple Silicon causing mutex.cc hangs
+huggingface-hub  # Hugging Face model hub client (>=0.19.0)
 
 # 🌦️ Scientific Data & Weather APIs
 cdsapi  # Climate Data Store API client for ECMWF data (>=0.5.0)
@@ -232,3 +235,7 @@ pip-tools  # Dependency management
 
 # 🍎 Apple Silicon Optimization
 mlx; platform_machine == "arm64"  # Apple Silicon ML framework (>=0.4.0)
+
+# Dynamic conflict resolution constraints
+langchain-core==0.3.80  # Compatible with langchain-* packages (<0.4.0,>=0.3.27)
+openai==1.109.1  # Compatible with langchain-openai (<2.0.0,>=1.58.1)
